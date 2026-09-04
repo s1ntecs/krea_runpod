@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "loras": {
+    "realism": {
+      "file": "krea2_realism_lora.safetensors",
+      "default_strength": 1.0,
+      "trigger": "",
+      "description": "Natural candid photorealism for Krea 2 Turbo",
+      "source": "gokaygokay/Krea-2-Realism-LoRA",
+      "license": "krea-2-community-license"
+    },
+    "darkbrush": {
+      "file": "krea2_darkbrush.safetensors",
+      "default_strength": 1.0,
+      "trigger": "monochrome ink wash style",
+      "description": "Official Krea 2 monochrome ink-wash style",
+      "source": "Comfy-Org/Krea-2",
+      "license": "krea-2-community-license"
+    },
+    "retroanime": {
+      "file": "krea2_retroanime.safetensors",
+      "default_strength": 1.0,
+      "trigger": "purple retro anime style",
+      "description": "Official Krea 2 retro-anime style",
+      "source": "Comfy-Org/Krea-2",
+      "license": "krea-2-community-license"
+    }
+  }
+}

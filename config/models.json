@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "id": "krea2-turbo-fp8",
+      "group": "core",
+      "required": true,
+      "repo_id": "Comfy-Org/Krea-2",
+      "revision": "main",
+      "filename": "diffusion_models/krea2_turbo_fp8_scaled.safetensors",
+      "target": "diffusion_models/krea2_turbo_fp8_scaled.safetensors",
+      "min_bytes": 10000000000,
+      "license": "krea-2-community-license",
+      "sha256": "eb4dd8c612cfd10f64f25b057e6e6bbcb5737c94a7372177e456dbf7579502f1"
+    },
+    {
+      "id": "qwen3vl-4b-fp8",
+      "group": "core",
+      "required": true,
+      "repo_id": "Comfy-Org/Krea-2",
+      "revision": "main",
+      "filename": "text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
+      "target": "text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
+      "min_bytes": 3000000000,
+      "license": "krea-2-community-license",
+      "sha256": "54bd5144df0bbc25dd6ccadfcb826b521445a1b06ae5a42570bdd2974ca87094"
+    },
+    {
+      "id": "qwen-image-vae",
+      "group": "core",
+      "required": true,
+      "repo_id": "Comfy-Org/Krea-2",
+      "revision": "main",
+      "filename": "vae/qwen_image_vae.safetensors",
+      "target": "vae/qwen_image_vae.safetensors",
+      "min_bytes": 100000000,
+      "license": "krea-2-community-license",
+      "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f"
+    },
+    {
+      "id": "realism",
+      "group": "starter-loras",
+      "required": false,
+      "repo_id": "gokaygokay/Krea-2-Realism-LoRA",
+      "revision": "main",
+      "filename": "krea2_realism_lora.safetensors",
+      "target": "loras/krea2_realism_lora.safetensors",
+      "min_bytes": 100000000,
+      "license": "krea-2-community-license",
+      "sha256": "6c38a7934c54a56e0f67753660a4500a094d6dce28a0ee4a0d1dc9f4975d32d2"
+    },
+    {
+      "id": "darkbrush",
+      "group": "starter-loras",
+      "required": false,
+      "repo_id": "Comfy-Org/Krea-2",
+      "revision": "main",
+      "filename": "loras/krea2_darkbrush.safetensors",
+      "target": "loras/krea2_darkbrush.safetensors",
+      "min_bytes": 100000000,
+      "license": "krea-2-community-license",
+      "sha256": "f47c4316dd93af66e0518c93b582f459571d4925b519133770c73a52cd5db7c6"
+    },
+    {
+      "id": "retroanime",
+      "group": "extra-loras",
+      "required": false,
+      "repo_id": "Comfy-Org/Krea-2",
+      "revision": "main",
+      "filename": "loras/krea2_retroanime.safetensors",
+      "target": "loras/krea2_retroanime.safetensors",
+      "min_bytes": 100000000,
+      "license": "krea-2-community-license",
+      "sha256": "ca42107783d9e517c5d62cb9a9db9ab2ba4887d90e9dad97a9d1a7fe6ff14c56"
+    }
+  ]
+}

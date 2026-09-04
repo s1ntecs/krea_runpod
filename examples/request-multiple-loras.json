@@ -1,0 +1,20 @@
+{
+  "input": {
+    "prompt": "Two samurai practicing in a misty mountain courtyard",
+    "width": 1024,
+    "height": 1024,
+    "steps": 8,
+    "cfg": 1.0,
+    "seed": 12345,
+    "loras": [
+      {
+        "name": "realism",
+        "strength": 0.75
+      },
+      {
+        "name": "darkbrush",
+        "strength": 0.35
+      }
+    ]
+  }
+}
