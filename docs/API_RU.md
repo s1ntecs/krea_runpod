@@ -116,13 +116,19 @@ Object:
 
 ```json
 {
+  "images_base64": ["iVBORw0KGgoAAAANSUhEUgAAB..."],
+  "time": 12.34,
+  "steps": 8,
+  "seed": 42,
   "ok": true,
   "action": "generate",
   "prompt_id": "...",
-  "seed": 42,
   "width": 1024,
   "height": 1024,
   "num_images": 1,
+  "cfg": 1.0,
+  "sampler_name": "euler",
+  "scheduler": "simple",
   "loras": [
     {
       "requested_name": "realism",
@@ -134,19 +140,26 @@ Object:
     }
   ],
   "final_prompt": "...",
-  "output_mode": "base64",
-  "images": [
-    {
-      "filename": "krea2_...png",
-      "mime_type": "image/png",
-      "data": "data:image/png;base64,..."
-    }
-  ],
-  "elapsed_seconds": 12.345
+  "output_mode": "base64"
 }
 ```
 
-При `output_mode=s3` элемент `images` содержит `url`.
+| Поле | Тип | Описание |
+| --- | --- | --- |
+| `images_base64` | array[string] | Чистый base64 каждого PNG, **без** префикса `data:image/png;base64,`. Присутствует только при `output_mode=base64`. |
+| `time` | float | Полное время обработки задачи в секундах, округлённое до сотых. |
+| `steps` | integer | Число шагов сэмплера, фактически использованное. |
+| `seed` | integer | Фактический seed. При `seed=-1` в запросе здесь лежит сгенерированный. |
+
+Декодирование на клиенте:
+
+```python
+import base64
+
+png_bytes = base64.b64decode(response["images_base64"][0])
+```
+
+При `output_mode=s3` или `path` поля `images_base64` нет — вместо него возвращается `images` со списком объектов, содержащих `url` или `path` соответственно.
 
 ## List LoRAs
 

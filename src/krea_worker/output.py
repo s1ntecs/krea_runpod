@@ -34,11 +34,10 @@ class OutputManager:
     @staticmethod
     def _base64(path: Path) -> dict:
         mime = mimetypes.guess_type(path.name)[0] or "image/png"
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
         return {
             "filename": path.name,
             "mime_type": mime,
-            "data": f"data:{mime};base64,{encoded}",
+            "base64": base64.b64encode(path.read_bytes()).decode("ascii"),
         }
 
     @staticmethod

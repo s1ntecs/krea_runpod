@@ -26,6 +26,65 @@ find /runpod-volume/models -maxdepth 3 -type f -printf '%p %s bytes\n'
 
 Файл повреждён, загрузка прервалась или upstream заменил вес. Скрипт не публикует такой файл как готовый. Удалите `.incomplete`/`.staging`, повторите download и проверьте, что `config/models.json` соответствует используемой версии.
 
+## `ModuleNotFoundError: No module named 'huggingface_hub'` при запуске bootstrap
+
+В базовых образах RunPod `python` и `pip` нередко указывают на разные интерпретаторы: `python` — на системный Python 3.8, `pip` — на Python 3.13. Пакет ставится в `site-packages` одного, а скрипт запускается другим.
+
+```bash
+python -V
+pip -V          # покажет, к какому Python привязан pip
+```
+
+Запускайте скрипт явным интерпретатором >= 3.11 (`requires-python` в `pyproject.toml`):
+
+```bash
+python3.13 scripts/bootstrap_models.py ...
+```
+
+По той же причине `python -m venv` падает с требованием `apt install python3.8-venv`, которого нет в репозиториях. Venv для bootstrap не нужен — достаточно правильного интерпретатора.
+
+## Загрузка весов обрывается сообщением `Killed`
+
+`Killed` без traceback — это SIGKILL от OOM-killer, а не ошибка сети или нехватка диска (нехватка диска дала бы `OSError: [Errno 28] No space left on device`).
+
+`free -h` показывает память **хоста** и здесь бесполезна. Реальный лимит контейнера — в cgroup:
+
+```bash
+cat /sys/fs/cgroup/memory.max      # часто 8000000000, то есть 8 GB
+cat /sys/fs/cgroup/memory.peak
+cat /sys/fs/cgroup/memory.events   # oom_kill > 0 подтверждает диагноз
+```
+
+Причина — параллельные загрузчики HuggingFace (Xet-бэкенд `hf_xet`, `hf_transfer`), которые буферизуют чанки в RAM. Переведите загрузку в потоковый режим:
+
+```bash
+export HF_HUB_DISABLE_XET=1
+export HF_HUB_ENABLE_HF_TRANSFER=0
+export HF_XET_HIGH_PERFORMANCE=0
+```
+
+Скачивание станет медленнее, зато расход памяти будет плоским, а прерванная загрузка корректно докачивается.
+
+Та же проблема воспроизводится и в worker: при `AUTO_DOWNLOAD_MODELS=true` скрипт запускается из `src/start.sh` на cold start. Пропишите те же три переменные в env шаблона RunPod, иначе worker может быть убит OOM-killer при первой загрузке.
+
+## `Fast download using 'hf_transfer' is enabled ... but 'hf_transfer' package is not available`
+
+Базовые образы RunPod выставляют `HF_HUB_ENABLE_HF_TRANSFER=1`, но сам пакет в образ не входит. Ошибка проявляется только при отключённом Xet — иначе загрузка идёт мимо `http_get` и до этой проверки не доходит.
+
+```bash
+export HF_HUB_ENABLE_HF_TRANSFER=0
+```
+
+Ставить `hf_transfer` вместо этого не стоит: это ещё один многопоточный загрузчик с буферами в RAM, а лимит памяти контейнера обычно и так узкий.
+
+## Кэш HuggingFace переполняет диск контейнера
+
+Overlay-раздел `/` в Pod часто всего 5 GB, тогда как кэш Xet по умолчанию разрастается до ~10 GB в `~/.cache/huggingface`. Уводите кэш на Network Volume:
+
+```bash
+export HF_HOME=/workspace/.cache/huggingface
+```
+
 ## `Model files exist but are not visible to ComfyUI`
 
 Проверьте:
