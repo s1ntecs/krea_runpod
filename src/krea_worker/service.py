@@ -270,23 +270,28 @@ class KreaService:
             prompt_id,
             [lora.file for lora in loras],
         )
+        head: dict[str, Any] = (
+            {"images_base64": [item["base64"] for item in images]}
+            if output_mode == "base64"
+            else {"images": images}
+        )
         return {
+            **head,
+            "time": round(elapsed, 2),
+            "steps": request.steps,
+            "seed": request.seed,
             "ok": True,
             "action": "generate",
             "prompt_id": prompt_id,
-            "seed": request.seed,
             "width": request.width,
             "height": request.height,
             "num_images": len(images),
-            "steps": request.steps,
             "cfg": request.cfg,
             "sampler_name": request.sampler_name,
             "scheduler": request.scheduler,
             "loras": [lora.public_dict() for lora in loras],
             "final_prompt": workflow_result.final_prompt,
             "output_mode": output_mode,
-            "images": images,
-            "elapsed_seconds": round(elapsed, 3),
         }
 
     def process(self, payload: dict, job_id: str) -> dict:

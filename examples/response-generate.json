@@ -1,0 +1,29 @@
+{
+  "images_base64": [
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGO4Y2MDAANMAVV5GmOeAAAAAElFTkSuQmCC"
+  ],
+  "time": 12.34,
+  "steps": 8,
+  "seed": 874512,
+  "ok": true,
+  "action": "generate",
+  "prompt_id": "7d3f1c9e-4b2a-4a71-9f0c-2ad5e6b18c44",
+  "width": 1024,
+  "height": 1024,
+  "num_images": 1,
+  "cfg": 1.0,
+  "sampler_name": "euler",
+  "scheduler": "beta",
+  "loras": [
+    {
+      "requested_name": "realism",
+      "file": "krea2_realism_lora.safetensors",
+      "strength": 1.0,
+      "trigger": "",
+      "append_trigger": true,
+      "registered": true
+    }
+  ],
+  "final_prompt": "A studio photograph of a red ceramic mug on a gray table",
+  "output_mode": "base64"
+}

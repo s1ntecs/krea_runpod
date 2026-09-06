@@ -72,17 +72,32 @@ RunPod Network Volume
 git clone https://github.com/s1ntecs/krea_runpod.git
 cd krea_runpod
 
-python -m venv /tmp/krea-bootstrap-venv
-source /tmp/krea-bootstrap-venv/bin/activate
-python -m pip install "huggingface_hub>=0.34,<1"
+# ВАЖНО: в базовых образах RunPod `python` часто указывает на системный
+# Python 3.8, а `pip` — на Python 3.13. Проекту нужен Python >= 3.11.
+# Определите правильный интерпретатор и дальше используйте только его.
+PY=$(command -v python3.13 || command -v python3.12 || command -v python3.11 || command -v python3)
+"$PY" -c 'import sys; assert sys.version_info >= (3, 11), sys.version; print(sys.executable, sys.version)'
+
+"$PY" -m pip install "huggingface_hub>=0.34,<1"
+
+# Загрузчики HuggingFace (Xet-бэкенд, hf_transfer) качают в несколько потоков
+# и буферизуют чанки в RAM. Контейнер RunPod ограничен cgroup — часто 8 GB
+# независимо от того, что показывает `free -h`, — и процесс убивает
+# OOM-killer с сообщением `Killed`. Потоковый режим с плоским расходом памяти:
+export HF_HUB_DISABLE_XET=1
+export HF_HUB_ENABLE_HF_TRANSFER=0
+export HF_XET_HIGH_PERFORMANCE=0
+
+# Кэш HuggingFace — на volume, а не на overlay контейнера (обычно всего 5 GB):
+export HF_HOME=/workspace/.cache/huggingface
 
 export MODEL_ROOT=/workspace/models
-python scripts/bootstrap_models.py \
+"$PY" scripts/bootstrap_models.py \
   --model-root "$MODEL_ROOT" \
   --manifest config/models.json \
   --groups core,starter-loras
 
-python scripts/bootstrap_models.py \
+"$PY" scripts/bootstrap_models.py \
   --model-root "$MODEL_ROOT" \
   --manifest config/models.json \
   --groups core,starter-loras \
@@ -290,7 +305,7 @@ WARMUP_STRICT=true
 По умолчанию `OUTPUT_MODE=auto`:
 
 - если заданы `BUCKET_ENDPOINT_URL`, `BUCKET_ACCESS_KEY_ID`, `BUCKET_SECRET_ACCESS_KEY`, результат загружается в внешний S3;
-- иначе возвращается data URI в base64;
+- иначе возвращается `images_base64` — список чистых base64-строк без префикса `data:`;
 - если S3 временно не отвечает, режим `auto` автоматически возвращается к base64.
 
 Для production лучше настроить S3, потому что большие PNG в base64 увеличивают ответ.
