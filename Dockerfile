@@ -28,6 +28,15 @@ RUN uv pip install --no-cache -r requirements-worker.txt
 COPY config ./config
 COPY scripts ./scripts
 
+# Krea 2 Identity Edit nodes: grounded encoding and the in-context source
+# preservation path that stock ComfyUI has no equivalent for. Pinned to a
+# commit so a rebuild cannot silently pick up different node behaviour.
+ARG KREA2EDIT_REF=86f886dac23013d88996e3a2e99093ba44d322fb
+RUN git clone --filter=blob:none https://github.com/lbouaraba/comfyui-krea2edit.git \
+      /comfyui/custom_nodes/comfyui-krea2edit \
+    && git -C /comfyui/custom_nodes/comfyui-krea2edit checkout --quiet "${KREA2EDIT_REF}" \
+    && rm -rf /comfyui/custom_nodes/comfyui-krea2edit/.git
+
 # Optional weight baking. Empty (default) keeps the volume-based image.
 # Kept ahead of `COPY src` so editing worker code never re-downloads weights.
 ARG BAKE_MODEL_GROUPS=

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import math
+import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .errors import InputError
@@ -16,6 +19,22 @@ ALLOWED_SAMPLERS = {
     "heun",
 }
 ALLOWED_SCHEDULERS = {"beta", "simple", "normal", "sgm_uniform"}
+
+# Defaults taken from the workflow shipped with comfyui-krea2edit; they are the
+# configuration the Krea 2 Identity Edit weights are actually run with.
+EDIT_DEFAULT_STEPS = 10
+EDIT_DEFAULT_CFG = 1.0
+EDIT_DEFAULT_SCHEDULER = "simple"
+EDIT_DEFAULT_GROUNDING_PX = 768
+EDIT_DEFAULT_REF_BOOST = 4.0
+MAX_EDIT_IMAGES = 2
+MAX_EDIT_IMAGE_BYTES = 20 * 1024 * 1024
+_DATA_URI = re.compile(r"^data:image/[a-zA-Z0-9.+-]+;base64,")
+_IMAGE_MAGIC = (
+    bytes([137, 80, 78, 71, 13, 10, 26, 10]),  # PNG
+    bytes([255, 216, 255]),                    # JPEG
+    b"RIFF",                                   # WebP container
+)
 
 
 def _as_int(value: Any, name: str) -> int:
@@ -66,6 +85,10 @@ class GenerationRequest:
     loras: Any
     output_mode: str | None
     filename_prefix: str
+    images: tuple = ()
+    grounding_px: int = EDIT_DEFAULT_GROUNDING_PX
+    ref_boost: float = EDIT_DEFAULT_REF_BOOST
+    ref_boost_a: float = 1.0
 
     @classmethod
     def parse(cls, payload: dict, settings: Settings) -> "GenerationRequest":
@@ -180,4 +203,77 @@ class GenerationRequest:
             loras=loras,
             output_mode=output_mode,
             filename_prefix=prefix,
+        )
+
+    @staticmethod
+    def _decode_image(value: Any, name: str) -> bytes:
+        if not isinstance(value, str) or not value.strip():
+            raise InputError(f"{name} must be a base64-encoded image")
+        payload = _DATA_URI.sub("", value.strip())
+        try:
+            data = base64.b64decode(payload, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise InputError(f"{name} is not valid base64") from exc
+        if not data:
+            raise InputError(f"{name} decoded to an empty image")
+        if len(data) > MAX_EDIT_IMAGE_BYTES:
+            raise InputError(
+                f"{name} is larger than {MAX_EDIT_IMAGE_BYTES // (1024 * 1024)} MB"
+            )
+        if not data.startswith(_IMAGE_MAGIC):
+            raise InputError(f"{name} is not a PNG, JPEG, or WebP image")
+        return data
+
+    @classmethod
+    def parse_edit(cls, payload: dict, settings: Settings) -> "GenerationRequest":
+        """Parses an instruction-edit request for the Krea 2 Identity Edit workflow."""
+        if not isinstance(payload, dict):
+            raise InputError("input must be a JSON object")
+
+        raw = payload.get("images")
+        if raw is None:
+            raw = [payload.get(key) for key in ("image", "image_b")]
+            raw = [item for item in raw if item is not None]
+        if not isinstance(raw, list):
+            raise InputError("images must be an array of base64-encoded images")
+        if not raw:
+            raise InputError(
+                "edit requires a reference image in 'image' (or 'images')"
+            )
+        if len(raw) > MAX_EDIT_IMAGES:
+            raise InputError(
+                f"edit accepts at most {MAX_EDIT_IMAGES} reference images; "
+                "training order is scene first, subject second"
+            )
+        names = ("image", "image_b")
+        images = tuple(
+            cls._decode_image(item, names[index]) for index, item in enumerate(raw)
+        )
+
+        grounding_px = _as_int(
+            payload.get("grounding_px", EDIT_DEFAULT_GROUNDING_PX), "grounding_px"
+        )
+        if grounding_px < 0 or grounding_px > 4096:
+            raise InputError("grounding_px must be between 0 and 4096")
+
+        ref_boost = _as_float(
+            payload.get("ref_boost", EDIT_DEFAULT_REF_BOOST), "ref_boost"
+        )
+        ref_boost_a = _as_float(payload.get("ref_boost_a", 1.0), "ref_boost_a")
+        for name, value in (("ref_boost", ref_boost), ("ref_boost_a", ref_boost_a)):
+            if value < 0 or value > 1000:
+                raise InputError(f"{name} must be between 0 and 1000")
+
+        defaults = {
+            "steps": EDIT_DEFAULT_STEPS,
+            "cfg": EDIT_DEFAULT_CFG,
+            "scheduler": EDIT_DEFAULT_SCHEDULER,
+        }
+        base = cls.parse({**defaults, **payload}, settings)
+        return replace(
+            base,
+            images=images,
+            grounding_px=grounding_px,
+            ref_boost=ref_boost,
+            ref_boost_a=ref_boost_a,
         )

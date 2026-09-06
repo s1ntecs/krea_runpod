@@ -52,6 +52,25 @@ class ComfyClient:
             time.sleep(0.5)
         raise ComfyError(f"ComfyUI did not become ready: {last_error}")
 
+    def upload_image(self, data: bytes, filename: str) -> str:
+        """Uploads an image into ComfyUI's input dir and returns the name LoadImage expects."""
+        try:
+            response = self.session.post(
+                f"{self.base_url}/upload/image",
+                files={"image": (filename, data, "image/png")},
+                data={"type": "input", "overwrite": "false"},
+                timeout=120,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except requests.RequestException as exc:
+            raise ComfyError(f"Could not upload input image to ComfyUI: {exc}") from exc
+        name = payload.get("name") if isinstance(payload, dict) else None
+        if not isinstance(name, str) or not name:
+            raise ComfyError("ComfyUI did not return a name for the uploaded image")
+        subfolder = payload.get("subfolder") or ""
+        return f"{subfolder}/{name}" if subfolder else name
+
     def object_info(self, node: str | None = None) -> dict:
         path = f"/object_info/{node}" if node else "/object_info"
         try:

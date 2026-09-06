@@ -13,7 +13,7 @@ from .lora_registry import LoraRegistry
 from .output import OutputManager
 from .request import GenerationRequest
 from .settings import Settings
-from .workflow import build_workflow
+from .workflow import build_edit_workflow, build_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -294,12 +294,92 @@ class KreaService:
             "output_mode": output_mode,
         }
 
+    def _edit_lora_file(self) -> str:
+        """Ensures the identity-edit LoRA is on disk before we build an edit graph."""
+        name = self.settings.edit_lora_name
+        path = self.settings.lora_root / name
+        if not path.is_file() or path.stat().st_size < _FALLBACK_MIN_MODEL_BYTES:
+            raise ModelFileError(
+                "Krea 2 Identity Edit LoRA is missing or incomplete; "
+                "the 'edit' group of the model manifest is not installed",
+                details={"expected_path": str(path), "lora": name},
+            )
+        return name
+
+    def edit(self, payload: dict, job_id: str) -> dict:
+        started = time.monotonic()
+        request = GenerationRequest.parse_edit(payload, self.settings)
+        self.validate_model_files()
+        edit_lora = self._edit_lora_file()
+        loras = self.registry.resolve(request.loras)
+        safe_job = "".join(ch for ch in job_id if ch.isalnum() or ch in "-_")[-24:]
+        prefix = (
+            f"{request.filename_prefix}_{safe_job}"
+            if safe_job
+            else request.filename_prefix
+        )
+
+        with _GENERATION_LOCK:
+            self.client.wait_ready(timeout=30)
+            names = [
+                self.client.upload_image(data, f"{prefix}_ref{index}.png")
+                for index, data in enumerate(request.images)
+            ]
+            workflow_result = build_edit_workflow(
+                request, loras, self.settings, prefix, names, edit_lora
+            )
+            prompt_id, paths, _history = self.client.run(
+                workflow_result.workflow, workflow_result.output_node_id
+            )
+            output_mode, images = self.output.publish(
+                paths, request.output_mode, job_id
+            )
+
+        elapsed = time.monotonic() - started
+        logger.info(
+            "Edited %d image(s) in %.2fs; prompt_id=%s refs=%d loras=%s",
+            len(images),
+            elapsed,
+            prompt_id,
+            len(request.images),
+            [lora.file for lora in loras],
+        )
+        head: dict[str, Any] = (
+            {"images_base64": [item["base64"] for item in images]}
+            if output_mode == "base64"
+            else {"images": images}
+        )
+        return {
+            **head,
+            "time": round(elapsed, 2),
+            "steps": request.steps,
+            "seed": request.seed,
+            "ok": True,
+            "action": "edit",
+            "prompt_id": prompt_id,
+            "width": request.width,
+            "height": request.height,
+            "num_images": len(images),
+            "cfg": request.cfg,
+            "sampler_name": request.sampler_name,
+            "scheduler": request.scheduler,
+            "grounding_px": request.grounding_px,
+            "ref_boost": request.ref_boost,
+            "reference_images": len(request.images),
+            "edit_lora": edit_lora,
+            "loras": [lora.public_dict() for lora in loras],
+            "final_prompt": workflow_result.final_prompt,
+            "output_mode": output_mode,
+        }
+
     def process(self, payload: dict, job_id: str) -> dict:
         if not isinstance(payload, dict):
             raise InputError("input must be a JSON object")
         action = str(payload.get("action", "generate")).strip().lower()
         if action == "generate":
             return self.generate(payload, job_id)
+        if action == "edit":
+            return self.edit(payload, job_id)
         if action in {"list_loras", "loras"}:
             return {
                 "ok": True,
@@ -315,6 +395,7 @@ class KreaService:
             details={
                 "allowed": [
                     "generate",
+                    "edit",
                     "list_loras",
                     "health",
                     "validate_runtime",

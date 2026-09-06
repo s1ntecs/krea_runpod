@@ -1,0 +1,12 @@
+{
+  "input": {
+    "action": "edit",
+    "prompt": "Create a photo of this man next to the tractor",
+    "image": "<base64 сцены>",
+    "image_b": "<base64 человека>",
+    "width": 1152,
+    "height": 896,
+    "grounding_px": 768,
+    "ref_boost": 4.0
+  }
+}

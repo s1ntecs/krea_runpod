@@ -1,0 +1,11 @@
+{
+  "input": {
+    "action": "edit",
+    "prompt": "Change her outfit to a red raincoat",
+    "image": "<base64 PNG>",
+    "width": 1024,
+    "height": 1024,
+    "steps": 10,
+    "grounding_px": 768
+  }
+}
