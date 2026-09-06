@@ -1,0 +1,11 @@
+krea_network_volume:
+  base_path: __MODEL_ROOT__
+  diffusion_models: diffusion_models/
+  text_encoders: text_encoders/
+  vae: vae/
+  loras: loras/
+  checkpoints: checkpoints/
+  clip_vision: clip_vision/
+  embeddings: embeddings/
+  controlnet: controlnet/
+  upscale_models: upscale_models/

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check src scripts tests
+      - name: Compile
+        run: python -m compileall -q src scripts tests
+      - name: Shell syntax
+        run: bash -n src/start.sh scripts/s3_upload.sh examples/curl-runsync.sh
+      - name: Unit tests
+        env:
+          PYTHONPATH: src
+        run: pytest -q
+      - name: Validate JSON examples and manifests
+        run: |
+          python -m json.tool config/models.json >/dev/null
+          python -m json.tool config/lora_catalog.json >/dev/null
+          for file in examples/*.json; do python -m json.tool "$file" >/dev/null; done
+      - name: Validate model manifest selection
+        run: >-
+          python scripts/bootstrap_models.py
+          --dry-run
+          --model-root /tmp/krea-models
+          --manifest config/models.json
+          --groups core,starter-loras
+
+  dockerfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Dockerfile static check
+        run: docker buildx build --check .
