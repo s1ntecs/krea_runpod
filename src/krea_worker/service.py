@@ -325,8 +325,13 @@ class KreaService:
                 self.client.upload_image(data, f"{prefix}_ref{index}.png")
                 for index, data in enumerate(request.images)
             ]
+            mask_name = None
+            if request.ref_boost_mask is not None:
+                mask_name = self.client.upload_image(
+                    request.ref_boost_mask, f"{prefix}_mask.png"
+                )
             workflow_result = build_edit_workflow(
-                request, loras, self.settings, prefix, names, edit_lora
+                request, loras, self.settings, prefix, names, edit_lora, mask_name
             )
             prompt_id, paths, _history = self.client.run(
                 workflow_result.workflow, workflow_result.output_node_id
@@ -367,6 +372,7 @@ class KreaService:
             "ref_boost": request.ref_boost,
             "system_prompt": request.system_prompt,
             "reference_images": len(request.images),
+            "ref_boost_mask": request.ref_boost_mask is not None,
             "edit_lora": edit_lora,
             "loras": [lora.public_dict() for lora in loras],
             "final_prompt": workflow_result.final_prompt,

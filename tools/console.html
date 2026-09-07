@@ -219,6 +219,17 @@ img{max-width:100%}[hidden]{display:none!important}</style>
             </label>
           </div>
 
+          <div id="maskBlock" hidden style="display:flex;flex-direction:column;gap:7px">
+            <label class="f">Область усиления — обведите лицо
+              <canvas id="maskCanvas" style="width:100%;border:1px solid var(--line-strong);border-radius:8px;background:var(--sunk);cursor:crosshair;display:block"></canvas>
+            </label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="ghost" id="maskClear">Убрать выделение</button>
+              <span class="hint" id="maskState">не задана</span>
+            </div>
+            <p class="hint">Протяните мышью овал по лицу. Тогда <b>ref_boost действует только на него</b>: лицо держится жёстко, а поза и тело остаются свободными — смена позы становится возможной в один проход.</p>
+          </div>
+
           <label class="f">Промпт
             <textarea id="prompt" spellcheck="false">Change her apron into a bright red raincoat</textarea>
           </label>
@@ -270,6 +281,7 @@ img{max-width:100%}[hidden]{display:none!important}</style>
           </details>
 
           <button class="ghost" id="facePreset" style="width:100%;padding:9px">Пресет: максимум сходства лица</button>
+          <button class="ghost" id="posePreset" style="width:100%;padding:9px">Пресет: смена позы с сохранением лица</button>
           <button class="run" id="run">Запустить</button>
           <p class="hint" id="runHint">Холодный старт тянет образ 50 ГБ и занимает несколько минут. Прогретый воркер отвечает за 10–60 секунд.</p>
         </div>
@@ -384,7 +396,7 @@ img{max-width:100%}[hidden]{display:none!important}</style>
             '<div class="meta">' + img.naturalWidth + "×" + img.naturalHeight + "  ·  " +
             (file.size / 1048576).toFixed(2) + " MB  ·  " + file.name + "</div>";
           el.querySelector("img").src = r.result;
-          if (slot === "imgA") fitSize(img.naturalWidth, img.naturalHeight);
+          if (slot === "imgA") { fitSize(img.naturalWidth, img.naturalHeight); maskShow(); }
           checkSize();
           log("загружен " + slot.replace("img", "референс ") + ": " + img.naturalWidth + "×" + img.naturalHeight);
         };
@@ -437,6 +449,7 @@ img{max-width:100%}[hidden]{display:none!important}</style>
     $("mEdit").setAttribute("aria-pressed", String(m === "edit"));
     $("mGen").setAttribute("aria-pressed", String(m === "generate"));
     $("imgBlock").style.display = m === "edit" ? "flex" : "none";
+    if (typeof maskShow === "function") maskShow();
     $("editAdv").style.display = m === "edit" ? "" : "none";
     $("steps").value = m === "edit" ? 10 : 8;
     $("promptHint").innerHTML = m === "edit"
@@ -446,6 +459,101 @@ img{max-width:100%}[hidden]{display:none!important}</style>
   }
   $("mEdit").addEventListener("click", function () { setMode("edit"); });
   $("mGen").addEventListener("click", function () { setMode("generate"); });
+
+  /* ---------- face mask on the source ---------- */
+  var mask = { el: null, ctx: null, box: null, drag: null, scale: 1 };
+
+  function maskShow() {
+    if (!state.imgA) { $("maskBlock").hidden = true; return; }
+    $("maskBlock").hidden = state.mode !== "edit";
+    var cv = $("maskCanvas");
+    var w = Math.min(360, state.imgA.w);
+    mask.scale = w / state.imgA.w;
+    cv.width = Math.round(state.imgA.w * mask.scale);
+    cv.height = Math.round(state.imgA.h * mask.scale);
+    mask.ctx = cv.getContext("2d");
+    var im = new Image();
+    im.onload = function () { mask.el = im; maskDraw(); };
+    im.src = state.imgA.dataUri;
+  }
+
+  function maskDraw() {
+    if (!mask.ctx || !mask.el) return;
+    var cv = $("maskCanvas");
+    mask.ctx.clearRect(0, 0, cv.width, cv.height);
+    mask.ctx.drawImage(mask.el, 0, 0, cv.width, cv.height);
+    if (!mask.box) return;
+    var b = mask.box;
+    mask.ctx.save();
+    mask.ctx.fillStyle = "rgba(15,110,106,.28)";
+    mask.ctx.strokeStyle = "#0f6e6a";
+    mask.ctx.lineWidth = 2;
+    mask.ctx.beginPath();
+    mask.ctx.ellipse((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2,
+                     Math.abs(b.x1 - b.x0) / 2, Math.abs(b.y1 - b.y0) / 2, 0, 0, Math.PI * 2);
+    mask.ctx.fill(); mask.ctx.stroke();
+    mask.ctx.restore();
+  }
+
+  function maskPng() {
+    if (!mask.box || !state.imgA) return null;
+    var b = mask.box, s = mask.scale;
+    var off = document.createElement("canvas");
+    off.width = state.imgA.w; off.height = state.imgA.h;
+    var c = off.getContext("2d");
+    c.fillStyle = "#000"; c.fillRect(0, 0, off.width, off.height);
+    c.fillStyle = "#fff";
+    c.beginPath();
+    c.ellipse(((b.x0 + b.x1) / 2) / s, ((b.y0 + b.y1) / 2) / s,
+              Math.abs(b.x1 - b.x0) / 2 / s, Math.abs(b.y1 - b.y0) / 2 / s, 0, 0, Math.PI * 2);
+    c.fill();
+    return off.toDataURL("image/png").split(",")[1];
+  }
+
+  (function wireMask() {
+    var cv = $("maskCanvas");
+    function pos(e) {
+      var r = cv.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (cv.width / r.width),
+               y: (e.clientY - r.top) * (cv.height / r.height) };
+    }
+    cv.addEventListener("pointerdown", function (e) {
+      cv.setPointerCapture(e.pointerId);
+      var p = pos(e);
+      mask.drag = { x0: p.x, y0: p.y };
+      mask.box = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+    });
+    cv.addEventListener("pointermove", function (e) {
+      if (!mask.drag) return;
+      var p = pos(e);
+      mask.box = { x0: mask.drag.x0, y0: mask.drag.y0, x1: p.x, y1: p.y };
+      maskDraw();
+    });
+    cv.addEventListener("pointerup", function () {
+      mask.drag = null;
+      var b = mask.box;
+      if (b && Math.abs(b.x1 - b.x0) > 8 && Math.abs(b.y1 - b.y0) > 8) {
+        $("maskState").textContent = "задана — ref_boost действует только на неё";
+        log("маска лица задана");
+      } else {
+        mask.box = null; $("maskState").textContent = "не задана"; maskDraw();
+      }
+    });
+    $("maskClear").addEventListener("click", function () {
+      mask.box = null; $("maskState").textContent = "не задана"; maskDraw();
+      log("маска снята");
+    });
+  })();
+
+  $("posePreset").addEventListener("click", function () {
+    setMode("edit");
+    $("grounding").value = 384; $("gpVal").textContent = "384";
+    $("refboost").value = 4;    $("rbVal").textContent = "4.0";
+    $("steps").value = 12;
+    $("sysPrompt").value = FACE_SYSTEM;
+    $("editAdv").open = true;
+    log("пресет позы: grounding_px 384, ref_boost 4.0 — обязательно обведите лицо, иначе поза не изменится");
+  });
 
   var FACE_SYSTEM = "Describe the person in the image by detailing their facial identity: " +
     "face shape, eye shape and colour, eyebrows, nose, mouth, jawline, skin tone and texture, " +
@@ -528,6 +636,8 @@ img{max-width:100%}[hidden]{display:none!important}</style>
       input.ref_boost = +$("refboost").value;
       var sp = $("sysPrompt").value.trim();
       if (sp) input.system_prompt = sp;
+      var mp = maskPng();
+      if (mp) input.ref_boost_mask = mp;
     }
 
     state.busy = true;
