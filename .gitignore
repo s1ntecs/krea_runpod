@@ -11,3 +11,5 @@ models/
 job_id.txt
 edit_job_id.txt
 edit_endpoint_id.txt
+docs/generation_catalog.md
+docs/0609_tz.md
