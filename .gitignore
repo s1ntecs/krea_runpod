@@ -8,3 +8,6 @@ __pycache__/
 output/
 models/
 .DS_Store
+job_id.txt
+edit_job_id.txt
+edit_endpoint_id.txt
