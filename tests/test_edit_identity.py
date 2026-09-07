@@ -55,7 +55,7 @@ def test_face_preset_also_raises_grounding_for_people(settings: Settings) -> Non
     """1024 is what the node pack recommends for people; 768 stays the default."""
     assert _req(settings).grounding_px == 768
     assert _req(settings, preset="face").grounding_px == 1024
-    assert _req(settings, preset="face").ref_boost == 1.75
+    assert _req(settings, preset="face").ref_boost == 4.0
     assert _req(settings, preset="face").steps == 12
     assert _req(settings, preset="face").system_prompt == FACE_SYSTEM_PROMPT
 
