@@ -41,10 +41,12 @@ FACE_SYSTEM_PROMPT = (
     "background:"
 )
 
-# Values the node pack and its community recommend for likeness work: grounding
-# at 1024 (the README's suggestion for people), a ref_boost well below the
-# workflow's 4.0 so the face keeps some life, and a couple of extra steps.
-FACE_PRESET = {"grounding_px": 1024, "ref_boost": 1.75, "steps": 12}
+# Values for likeness work: grounding at 1024 (the README's suggestion for
+# people) and ref_boost at 4.0, which the model card calls the setting that
+# "gives strong face/body likeness" and which the shipped workflow uses. Lower
+# values loosen toward creative freedom - 1.75 is a close-up portrait tip for
+# keeping the face from looking frozen, not a way to maximise likeness.
+FACE_PRESET = {"grounding_px": 1024, "ref_boost": 4.0, "steps": 12}
 MAX_EDIT_IMAGE_BYTES = 20 * 1024 * 1024
 _DATA_URI = re.compile(r"^data:image/[a-zA-Z0-9.+-]+;base64,")
 _IMAGE_MAGIC = (

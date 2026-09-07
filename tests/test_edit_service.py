@@ -104,6 +104,6 @@ def test_edit_echoes_the_identity_controls_it_used(
     )
 
     assert result["grounding_px"] == 1024
-    assert result["ref_boost"] == 1.75
+    assert result["ref_boost"] == 4.0
     assert result["steps"] == 12
     assert "facial identity" in result["system_prompt"].lower()
