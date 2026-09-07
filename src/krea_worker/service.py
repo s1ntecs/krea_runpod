@@ -365,6 +365,7 @@ class KreaService:
             "scheduler": request.scheduler,
             "grounding_px": request.grounding_px,
             "ref_boost": request.ref_boost,
+            "system_prompt": request.system_prompt,
             "reference_images": len(request.images),
             "edit_lora": edit_lora,
             "loras": [lora.public_dict() for lora in loras],

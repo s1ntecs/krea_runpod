@@ -261,10 +261,15 @@ img{max-width:100%}[hidden]{display:none!important}</style>
               <label class="f">ref_boost — <span id="rbVal" style="font-family:var(--mono)">4.0</span>
                 <input type="range" id="refboost" min="0" max="10" step="0.5" value="4" style="accent-color:var(--accent)">
               </label>
-              <p class="hint">Насколько тянуть к внешности референса. 1.0 — выключено.</p>
+              <p class="hint">Насколько тянуть к внешности референса. 1.0 — выключено. <b>4 даёт максимум сходства, но «замораживает» лицо</b> — для крупных планов берите около 1.75.</p>
+              <label class="f">Системный промпт для Qwen3-VL
+                <textarea id="sysPrompt" spellcheck="false" placeholder="пусто = стандартный, он смотрит на объекты и фон, а не на лицо" style="min-height:64px"></textarea>
+              </label>
+              <p class="hint">Определяет, <b>на что смотрит визуальный энкодер</b>. Стандартный про лицо не упоминает вообще.</p>
             </div>
           </details>
 
+          <button class="ghost" id="facePreset" style="width:100%;padding:9px">Пресет: максимум сходства лица</button>
           <button class="run" id="run">Запустить</button>
           <p class="hint" id="runHint">Холодный старт тянет образ 50 ГБ и занимает несколько минут. Прогретый воркер отвечает за 10–60 секунд.</p>
         </div>
@@ -442,6 +447,19 @@ img{max-width:100%}[hidden]{display:none!important}</style>
   $("mEdit").addEventListener("click", function () { setMode("edit"); });
   $("mGen").addEventListener("click", function () { setMode("generate"); });
 
+  var FACE_SYSTEM = "Describe the person in the image by detailing their facial identity: " +
+    "face shape, eye shape and colour, eyebrows, nose, mouth, jawline, skin tone and texture, " +
+    "moles and marks, hairline and hair texture, together with the colour, shape, size, texture " +
+    "and spatial relationships of the objects and background:";
+  $("facePreset").addEventListener("click", function () {
+    setMode("edit");
+    $("grounding").value = 1024; $("gpVal").textContent = "1024";
+    $("refboost").value = 1.75;  $("rbVal").textContent = "1.8";
+    $("steps").value = 12;
+    $("sysPrompt").value = FACE_SYSTEM;
+    $("editAdv").open = true;
+    log("пресет лица: grounding_px 1024, ref_boost 1.75, 12 шагов, системный промпт про лицо");
+  });
   $("grounding").addEventListener("input", function () { $("gpVal").textContent = this.value; });
   $("refboost").addEventListener("input", function () { $("rbVal").textContent = Number(this.value).toFixed(1); });
 
@@ -508,6 +526,8 @@ img{max-width:100%}[hidden]{display:none!important}</style>
       if (state.imgB) input.image_b = b64of(state.imgB.dataUri);
       input.grounding_px = +$("grounding").value;
       input.ref_boost = +$("refboost").value;
+      var sp = $("sysPrompt").value.trim();
+      if (sp) input.system_prompt = sp;
     }
 
     state.busy = true;
