@@ -40,6 +40,22 @@
       "description": "Transfers an outfit from a reference image",
       "source": "AliveAi/Krea-2-Edit-Outfit-Transfer",
       "license": "krea-2-community-license"
+    },
+    "snofs": {
+      "file": "snofs_krea_v1_4.safetensors",
+      "default_strength": 1.0,
+      "trigger": "",
+      "description": "Custom LoRA (sintecs/krea_loras)",
+      "source": "sintecs/krea_loras",
+      "license": "krea-2-community-license"
+    },
+    "knp": {
+      "file": "KNP_000003000.safetensors",
+      "default_strength": 1.0,
+      "trigger": "",
+      "description": "Custom LoRA, training step 3000 (sintecs/krea_loras)",
+      "source": "sintecs/krea_loras",
+      "license": "krea-2-community-license"
     }
   }
 }

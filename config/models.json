@@ -108,6 +108,30 @@
       "min_bytes": 1000000000,
       "license": "krea-2-community-license",
       "sha256": "4d1033032a1a24bb9b09c44b44514c6791241ebc7b91ffe4f5edd70830a8804d"
+    },
+    {
+      "id": "snofs",
+      "group": "user-loras",
+      "required": false,
+      "repo_id": "sintecs/krea_loras",
+      "revision": "main",
+      "filename": "snofs_krea_v1_4.safetensors",
+      "target": "loras/snofs_krea_v1_4.safetensors",
+      "min_bytes": 1400000000,
+      "license": "krea-2-community-license",
+      "sha256": "767888edde83003f14cf930f13f174fe2a7431e252a515ddf04bd93d382a8932"
+    },
+    {
+      "id": "knp",
+      "group": "user-loras",
+      "required": false,
+      "repo_id": "sintecs/krea_loras",
+      "revision": "main",
+      "filename": "KNP_000003000.safetensors",
+      "target": "loras/KNP_000003000.safetensors",
+      "min_bytes": 400000000,
+      "license": "krea-2-community-license",
+      "sha256": "6ec564e04eed317ae24093b4907004ac59a7c528d19d025bb41b4d719c4d16ec"
     }
   ]
 }
