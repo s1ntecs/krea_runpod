@@ -130,6 +130,7 @@ def build_edit_workflow(
     filename_prefix: str,
     image_names: list[str],
     edit_lora_name: str,
+    mask_name: str | None = None,
 ) -> WorkflowResult:
     """Builds the Krea 2 Identity Edit graph.
 
@@ -139,6 +140,8 @@ def build_edit_workflow(
     """
     if not image_names:
         raise ValueError("edit workflow needs at least one uploaded reference image")
+    if request.ref_boost_mask is not None and not mask_name:
+        raise ValueError("ref_boost_mask was requested but no mask was uploaded")
 
     final_prompt = append_lora_triggers(request.prompt, loras)
     workflow: dict[str, dict] = {
@@ -216,6 +219,17 @@ def build_edit_workflow(
         patch_inputs["source_latent_b"] = ["src_lat_01", 0]
         patch_inputs["source_image_b"] = ["src_01", 0]
         encode_extra["image_b"] = ["src_01", 0]
+
+    if mask_name and request.ref_boost_mask is not None:
+        workflow["ref_mask_img"] = {
+            "class_type": "LoadImage",
+            "inputs": {"image": mask_name},
+        }
+        workflow["ref_mask"] = {
+            "class_type": "ImageToMask",
+            "inputs": {"image": ["ref_mask_img", 0], "channel": "red"},
+        }
+        patch_inputs["ref_boost_mask"] = ["ref_mask", 0]
 
     workflow["edit_patch"] = {
         "class_type": "Krea2EditModelPatch",

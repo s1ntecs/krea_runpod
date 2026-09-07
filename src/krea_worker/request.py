@@ -109,6 +109,7 @@ class GenerationRequest:
     ref_boost: float = EDIT_DEFAULT_REF_BOOST
     ref_boost_a: float = 1.0
     system_prompt: str = ""
+    ref_boost_mask: bytes | None = None
 
     @classmethod
     def parse(cls, payload: dict, settings: Settings) -> "GenerationRequest":
@@ -300,6 +301,13 @@ class GenerationRequest:
         if grounding_px < 0 or grounding_px > 4096:
             raise InputError("grounding_px must be between 0 and 4096")
 
+        # A mask restricts ref_boost to part of the reference - typically the
+        # face, so likeness stays pinned while the body and pose stay free.
+        raw_mask = payload.get("ref_boost_mask")
+        ref_boost_mask = (
+            None if raw_mask is None else cls._decode_image(raw_mask, "ref_boost_mask")
+        )
+
         ref_boost = _as_float(
             payload.get(
                 "ref_boost", defaults_for.get("ref_boost", EDIT_DEFAULT_REF_BOOST)
@@ -324,4 +332,5 @@ class GenerationRequest:
             ref_boost=ref_boost,
             ref_boost_a=ref_boost_a,
             system_prompt=system_prompt,
+            ref_boost_mask=ref_boost_mask,
         )

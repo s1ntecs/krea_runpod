@@ -107,3 +107,23 @@ def test_edit_echoes_the_identity_controls_it_used(
     assert result["ref_boost"] == 4.0
     assert result["steps"] == 12
     assert "facial identity" in result["system_prompt"].lower()
+
+
+def test_edit_uploads_the_boost_mask_and_reports_it(
+    settings: Settings, tmp_path: Path, monkeypatch
+) -> None:
+    _prepare(settings)
+    out = tmp_path / "krea2_edit_00001_.png"
+    out.write_bytes(b"edited")
+    uploads: list = []
+    service = _service(settings, monkeypatch, out, uploads)
+    mask = png_bytes((255, 255, 255))
+
+    result = service.process(
+        {"action": "edit", "prompt": "face the camera", "image": b64(png_bytes()),
+         "ref_boost_mask": b64(mask), "ref_boost": 4.0},
+        "job-mask",
+    )
+
+    assert [data for data, _ in uploads][-1] == mask
+    assert result["ref_boost_mask"] is True
