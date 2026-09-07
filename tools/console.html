@@ -211,10 +211,10 @@ img{max-width:100%}[hidden]{display:none!important}</style>
           </div>
 
           <div id="imgBlock" style="display:flex;flex-direction:column;gap:11px">
-            <label class="f">Исходник — сцена
+            <label class="f">Первый вход — сцена или исходник
               <div class="drop" id="dropA" tabindex="0" role="button">Перетащите картинку или нажмите</div>
             </label>
-            <label class="f">Второй референс — человек <span class="hint" style="font-weight:400">необязательно</span>
+            <label class="f">Второй вход — человек <span class="hint" style="font-weight:400">для вставки в сцену</span>
               <div class="drop" id="dropB" tabindex="0" role="button">Порядок обучением зафиксирован: сцена первой, человек вторым</div>
             </label>
           </div>
@@ -272,6 +272,10 @@ img{max-width:100%}[hidden]{display:none!important}</style>
               <label class="f">ref_boost — <span id="rbVal" style="font-family:var(--mono)">4.0</span>
                 <input type="range" id="refboost" min="0" max="10" step="0.5" value="4" style="accent-color:var(--accent)">
               </label>
+              <label class="f">ref_boost_a — <span id="rbaVal" style="font-family:var(--mono)">1.0</span>
+                <input type="range" id="refboosta" min="0" max="10" step="0.5" value="1" style="accent-color:var(--accent)">
+              </label>
+              <p class="hint">То же для <b>первого</b> референса — сцены. В режиме одного входа не влияет. При вставке человека держите 1.0, иначе сцена начнёт диктовать позу.</p>
               <p class="hint">Насколько тянуть к внешности референса. 1.0 — выключено. <b>4 — максимум сходства</b>, это значение авторского воркфлоу. Ниже 1 — свобода вместо сходства. Для крупных портретов, где лицо кажется застывшим, пробуйте около 1.75.</p>
               <label class="f">Системный промпт для Qwen3-VL
                 <textarea id="sysPrompt" spellcheck="false" placeholder="пусто = стандартный, он смотрит на объекты и фон, а не на лицо" style="min-height:64px"></textarea>
@@ -282,6 +286,7 @@ img{max-width:100%}[hidden]{display:none!important}</style>
 
           <button class="ghost" id="facePreset" style="width:100%;padding:9px">Пресет: максимум сходства лица</button>
           <button class="ghost" id="posePreset" style="width:100%;padding:9px">Пресет: смена позы с сохранением лица</button>
+          <button class="ghost" id="insertPreset" style="width:100%;padding:9px">Пресет: вставить человека в сцену</button>
           <button class="run" id="run">Запустить</button>
           <p class="hint" id="runHint">Холодный старт тянет образ 50 ГБ и занимает несколько минут. Прогретый воркер отвечает за 10–60 секунд.</p>
         </div>
@@ -545,6 +550,22 @@ img{max-width:100%}[hidden]{display:none!important}</style>
     });
   })();
 
+  $("insertPreset").addEventListener("click", function () {
+    setMode("edit");
+    $("grounding").value = 1024; $("gpVal").textContent = "1024";
+    $("refboost").value = 4;     $("rbVal").textContent = "4.0";
+    $("refboosta").value = 1;    $("rbaVal").textContent = "1.0";
+    $("steps").value = 12;
+    $("sysPrompt").value = FACE_SYSTEM;
+    $("editAdv").open = true;
+    mask.box = null; $("maskState").textContent = "не задана"; maskDraw();
+    if (!$("prompt").value.trim() || $("prompt").value.indexOf("this person") === -1) {
+      $("prompt").value = "create a photo of this person sitting on the floor by the window";
+    }
+    log("пресет вставки: сцена в первое поле, человек во второе; ref_boost 4 бьёт по человеку");
+    if (!state.imgB) log("второе поле пустое — без него это обычная правка, а не вставка", "e");
+  });
+
   $("posePreset").addEventListener("click", function () {
     setMode("edit");
     $("grounding").value = 384; $("gpVal").textContent = "384";
@@ -570,6 +591,7 @@ img{max-width:100%}[hidden]{display:none!important}</style>
   });
   $("grounding").addEventListener("input", function () { $("gpVal").textContent = this.value; });
   $("refboost").addEventListener("input", function () { $("rbVal").textContent = Number(this.value).toFixed(1); });
+  $("refboosta").addEventListener("input", function () { $("rbaVal").textContent = Number(this.value).toFixed(1); });
 
   /* ---------- access ---------- */
   $("apiKey").value = load("krea.key", "");
@@ -636,6 +658,7 @@ img{max-width:100%}[hidden]{display:none!important}</style>
       input.ref_boost = +$("refboost").value;
       var sp = $("sysPrompt").value.trim();
       if (sp) input.system_prompt = sp;
+      input.ref_boost_a = +$("refboosta").value;
       var mp = maskPng();
       if (mp) input.ref_boost_mask = mp;
     }
