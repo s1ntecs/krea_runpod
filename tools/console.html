@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html{color-scheme:light dark}body{margin:0;font:14px system-ui,sans-serif}
+img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Krea 2 Worker Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:#f6f7f7; --surface:#ffffff; --sunk:#eceeee;
+    --ink:#171a1c; --ink-2:#4a5356; --ink-3:#798386;
+    --line:#d9dedd; --line-strong:#bcc4c3;
+    --accent:#0f6e6a; --accent-soft:#e2efee; --accent-ink:#0b4f4c;
+    --queued:#8a6d1f; --queued-soft:#f7f0dc;
+    --ok:#1d6f42; --ok-soft:#e0f0e6;
+    --bad:#a33a2c; --bad-soft:#f8e4e1;
+    --shadow:0 1px 2px rgba(23,26,28,.06), 0 8px 24px -16px rgba(23,26,28,.4);
+    --ui:'Archivo','Helvetica Neue',Arial,sans-serif;
+    --mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#101314; --surface:#181c1e; --sunk:#0b0e0f;
+      --ink:#e7eceb; --ink-2:#a3adad; --ink-3:#778382;
+      --line:#2a3032; --line-strong:#3d4548;
+      --accent:#4fb5ad; --accent-soft:#13312f; --accent-ink:#8fd6d0;
+      --queued:#d0aa4a; --queued-soft:#2e2712;
+      --ok:#5cc389; --ok-soft:#12301f;
+      --bad:#e08373; --bad-soft:#331714;
+      --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -16px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#101314; --surface:#181c1e; --sunk:#0b0e0f;
+    --ink:#e7eceb; --ink-2:#a3adad; --ink-3:#778382;
+    --line:#2a3032; --line-strong:#3d4548;
+    --accent:#4fb5ad; --accent-soft:#13312f; --accent-ink:#8fd6d0;
+    --queued:#d0aa4a; --queued-soft:#2e2712;
+    --ok:#5cc389; --ok-soft:#12301f;
+    --bad:#e08373; --bad-soft:#331714;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -16px rgba(0,0,0,.9);
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--ui);
+       font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1360px;margin:0 auto;padding:20px 22px 56px}
+
+  header.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 18px;
+             padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  h1{font-size:19px;font-weight:700;letter-spacing:-.015em;margin:0}
+  .sub{color:var(--ink-2);font-size:13px;margin:0}
+  .spacer{flex:1 1 auto}
+
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:3px 10px;border-radius:999px;
+        font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.02em;
+        border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface)}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3)}
+  .chip.is-ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:var(--ok-soft)}
+  .chip.is-ok .dot{background:var(--ok)}
+  .chip.is-wait{color:var(--queued);border-color:color-mix(in srgb,var(--queued) 40%,transparent);background:var(--queued-soft)}
+  .chip.is-wait .dot{background:var(--queued)}
+  .chip.is-bad{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent);background:var(--bad-soft)}
+  .chip.is-bad .dot{background:var(--bad)}
+
+  .cols{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:22px;align-items:start}
+  @media (max-width:960px){.cols{grid-template-columns:minmax(0,1fr)}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+         box-shadow:var(--shadow);overflow:hidden}
+  .panel + .panel{margin-top:16px}
+  .panel > h2{margin:0;padding:11px 14px;font-size:11px;font-weight:600;
+              letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+              border-bottom:1px solid var(--line);background:var(--sunk)}
+  .body{padding:14px;display:flex;flex-direction:column;gap:13px}
+
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:500;color:var(--ink-2)}
+  input[type=text],input[type=password],input[type=number],textarea,select{
+    font-family:var(--ui);font-size:13.5px;color:var(--ink);background:var(--paper);
+    border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;width:100%}
+  input[type=number],select{font-family:var(--mono);font-size:13px}
+  textarea{resize:vertical;min-height:82px;line-height:1.45}
+  input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,
+  .seg button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .seg{display:flex;gap:0;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+  .seg button{flex:1;padding:8px 6px;border:0;background:var(--paper);color:var(--ink-2);
+              font-family:var(--ui);font-size:13px;font-weight:600;cursor:pointer}
+  .seg button + button{border-left:1px solid var(--line-strong)}
+  .seg button[aria-pressed=true]{background:var(--accent);color:var(--surface)}
+
+  .drop{border:1.5px dashed var(--line-strong);border-radius:8px;background:var(--paper);
+        padding:14px;text-align:center;cursor:pointer;color:var(--ink-3);font-size:12.5px}
+  .drop.has{padding:0;border-style:solid;overflow:hidden;background:var(--sunk)}
+  .drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+  .drop img{display:block;width:100%;max-height:190px;object-fit:contain;background:var(--sunk)}
+  .drop .meta{font-family:var(--mono);font-size:11px;padding:6px 8px;color:var(--ink-2);
+              border-top:1px solid var(--line);text-align:left}
+
+  .loras{display:flex;flex-direction:column;gap:2px}
+  .lora{display:grid;grid-template-columns:18px minmax(0,1fr) 84px 46px;align-items:center;
+        gap:9px;padding:6px 6px;border-radius:6px}
+  .lora:hover{background:var(--sunk)}
+  .lora .nm{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis}
+  .lora .tag{font-size:10.5px;color:var(--ink-3);letter-spacing:.02em}
+  .lora input[type=range]{width:100%;accent-color:var(--accent)}
+  .lora .val{font-family:var(--mono);font-size:12px;color:var(--ink-2);text-align:right;
+             font-variant-numeric:tabular-nums}
+  .lora.off .nm,.lora.off .val{color:var(--ink-3)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+  .hint{font-size:11.5px;color:var(--ink-3);line-height:1.45}
+  .hint b{color:var(--ink-2);font-weight:600}
+  .warn{font-size:11.5px;color:var(--queued);background:var(--queued-soft);
+        border:1px solid color-mix(in srgb,var(--queued) 35%,transparent);
+        border-radius:6px;padding:7px 9px}
+
+  button.run{width:100%;padding:11px;border:0;border-radius:8px;background:var(--accent);
+             color:#fff;font-family:var(--ui);font-size:14.5px;font-weight:600;cursor:pointer}
+  button.run:disabled{background:var(--line-strong);color:var(--ink-3);cursor:not-allowed}
+  button.ghost{padding:6px 11px;border:1px solid var(--line-strong);border-radius:6px;
+               background:var(--surface);color:var(--ink-2);font-family:var(--ui);
+               font-size:12px;font-weight:500;cursor:pointer}
+  button.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+  .stage{min-height:320px;display:flex;align-items:center;justify-content:center;
+         background:var(--sunk);padding:14px}
+  .stage img{max-width:100%;max-height:66vh;display:block;border-radius:4px;
+             box-shadow:0 2px 12px -4px rgba(0,0,0,.35)}
+  .empty{text-align:center;color:var(--ink-3);font-size:13px;max-width:44ch;line-height:1.6}
+  .empty code{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));
+         border-top:1px solid var(--line)}
+  .fact{padding:9px 12px;border-right:1px solid var(--line)}
+  .fact:last-child{border-right:0}
+  .fact dt{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin:0 0 2px}
+  .fact dd{margin:0;font-family:var(--mono);font-size:14px;font-weight:500;
+           font-variant-numeric:tabular-nums}
+
+  .log{font-family:var(--mono);font-size:12px;max-height:190px;overflow:auto;
+       padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+  .log div{color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
+  .log .t{color:var(--ink-3)}
+  .log .e{color:var(--bad)}
+
+  pre.json{font-family:var(--mono);font-size:11.5px;line-height:1.55;margin:0;padding:12px 14px;
+           max-height:250px;overflow:auto;background:var(--sunk);color:var(--ink-2);
+           border-top:1px solid var(--line);white-space:pre-wrap;word-break:break-word}
+
+  .history{display:flex;gap:8px;padding:12px;overflow-x:auto}
+  .history button{border:1px solid var(--line-strong);border-radius:7px;padding:0;background:var(--sunk);
+                  cursor:pointer;flex:0 0 auto;overflow:hidden;width:84px}
+  .history button[aria-current=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+  .history img{display:block;width:84px;height:84px;object-fit:cover}
+  .history .cap{font-family:var(--mono);font-size:10px;color:var(--ink-2);padding:3px 4px;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .settings{display:none;padding:14px;border-bottom:1px solid var(--line);background:var(--sunk)}
+  .settings.open{display:flex;flex-direction:column;gap:11px}
+  details.adv summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-2);
+                      padding:2px 0;list-style:none}
+  details.adv summary::-webkit-details-marker{display:none}
+  details.adv summary::before{content:"▸ ";color:var(--ink-3)}
+  details.adv[open] summary::before{content:"▾ "}
+  details.adv > div{padding-top:11px;display:flex;flex-direction:column;gap:11px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Krea 2 Worker Console</h1>
+      <p class="sub">Локальная панель. Запросы уходят из вашего браузера прямо в api.runpod.ai.</p>
+    </div>
+    <div class="spacer"></div>
+    <span class="chip" id="health"><span class="dot"></span><span id="healthText">не подключено</span></span>
+    <button class="ghost" id="cogBtn">Доступ</button>
+  </header>
+
+  <div class="cols">
+    <div>
+      <section class="panel">
+        <div class="settings" id="settings">
+          <label class="f">RunPod API key
+            <input type="password" id="apiKey" placeholder="rpa_..." autocomplete="off">
+          </label>
+          <label class="f">Endpoint ID
+            <input type="text" id="endpointId" value="9w8pgbzn86me86" spellcheck="false">
+          </label>
+          <p class="hint">Ключ хранится только в этом браузере (<b>localStorage</b>) и уходит напрямую в <code>api.runpod.ai</code>. В коде страницы его нет.</p>
+          <div style="display:flex;gap:8px">
+            <button class="ghost" id="saveKey">Сохранить и проверить</button>
+            <button class="ghost" id="forgetKey">Забыть ключ</button>
+          </div>
+        </div>
+
+        <h2>Задача</h2>
+        <div class="body">
+          <div class="seg" role="group" aria-label="Режим">
+            <button id="mEdit" aria-pressed="true">Edit по картинке</button>
+            <button id="mGen" aria-pressed="false">Генерация с нуля</button>
+          </div>
+
+          <div id="imgBlock" style="display:flex;flex-direction:column;gap:11px">
+            <label class="f">Исходник — сцена
+              <div class="drop" id="dropA" tabindex="0" role="button">Перетащите картинку или нажмите</div>
+            </label>
+            <label class="f">Второй референс — человек <span class="hint" style="font-weight:400">необязательно</span>
+              <div class="drop" id="dropB" tabindex="0" role="button">Порядок обучением зафиксирован: сцена первой, человек вторым</div>
+            </label>
+          </div>
+
+          <label class="f">Промпт
+            <textarea id="prompt" spellcheck="false">Change her apron into a bright red raincoat</textarea>
+          </label>
+          <p class="hint" id="promptHint">В режиме edit пишите <b>инструкцию</b>, что изменить, а не описание всей сцены.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>LoRA</h2>
+        <div class="body" style="gap:8px">
+          <div class="loras" id="loras"></div>
+          <p class="hint">У <b>snofs</b> и <b>knp</b> триггер-слов нет — Civitai отдаёт <code>trainedWords: []</code>. Работают от одного присутствия в запросе. Своё слово можно дописать прямо в промпт.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Параметры</h2>
+        <div class="body">
+          <div class="grid3">
+            <label class="f">Ширина<input type="number" id="width" value="1024" step="16" min="256" max="2048"></label>
+            <label class="f">Высота<input type="number" id="height" value="1024" step="16" min="256" max="2048"></label>
+            <label class="f">Шагов<input type="number" id="steps" value="10" min="1" max="30"></label>
+          </div>
+          <p class="hint" id="sizeHint">Размер подставится из исходника: пропорции ответа должны совпадать с ним, иначе правка ляжет на часть кадра.</p>
+          <div id="sizeWarn" class="warn" hidden></div>
+
+          <div class="grid2">
+            <label class="f">Seed <span class="hint" style="font-weight:400">−1 = случайный</span>
+              <input type="number" id="seed" value="-1" min="-1"></label>
+            <label class="f">CFG<input type="number" id="cfg" value="1" step="0.1" min="0" max="10"></label>
+          </div>
+
+          <details class="adv" id="editAdv">
+            <summary>Тонкая настройка edit</summary>
+            <div>
+              <label class="f">grounding_px — <span id="gpVal" style="font-family:var(--mono)">768</span>
+                <input type="range" id="grounding" min="256" max="1536" step="64" value="768" style="accent-color:var(--accent)">
+              </label>
+              <p class="hint">Обученный диапазон <b>384–768</b>. Ниже — сильнее слушается инструкции, выше — сильнее держит лицо. Если пошли «раздвоенные» композиции, снижайте: это самая частая причина.</p>
+              <label class="f">ref_boost — <span id="rbVal" style="font-family:var(--mono)">4.0</span>
+                <input type="range" id="refboost" min="0" max="10" step="0.5" value="4" style="accent-color:var(--accent)">
+              </label>
+              <p class="hint">Насколько тянуть к внешности референса. 1.0 — выключено.</p>
+            </div>
+          </details>
+
+          <button class="run" id="run">Запустить</button>
+          <p class="hint" id="runHint">Холодный старт тянет образ 50 ГБ и занимает несколько минут. Прогретый воркер отвечает за 10–60 секунд.</p>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <section class="panel">
+        <h2>Результат</h2>
+        <div class="stage" id="stage">
+          <p class="empty" id="stageEmpty">Введите ключ через <b>Доступ</b>, загрузите исходник и нажмите <b>Запустить</b>.<br><br>Сюда придёт картинка, а ниже — тайминги и полный ответ воркера.</p>
+        </div>
+        <dl class="facts" id="facts">
+          <div class="fact"><dt>Время</dt><dd id="fTime">—</dd></div>
+          <div class="fact"><dt>Очередь</dt><dd id="fDelay">—</dd></div>
+          <div class="fact"><dt>Seed</dt><dd id="fSeed">—</dd></div>
+          <div class="fact"><dt>Шагов</dt><dd id="fSteps">—</dd></div>
+          <div class="fact"><dt>Размер</dt><dd id="fSize">—</dd></div>
+        </dl>
+        <div style="display:flex;gap:8px;padding:11px 12px;border-top:1px solid var(--line);flex-wrap:wrap">
+          <button class="ghost" id="copyB64" disabled>Скопировать base64</button>
+          <button class="ghost" id="useResult" disabled>Взять результат как исходник</button>
+          <span class="hint" style="align-self:center">Сохранить картинку — правой кнопкой по ней.</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Ход выполнения</h2>
+        <div class="log" id="log"><div class="t">Готово к запуску.</div></div>
+      </section>
+
+      <section class="panel">
+        <h2>Серия</h2>
+        <div class="history" id="history"><span class="hint" style="padding:4px">Здесь копятся запуски этой сессии — можно щёлкать и сравнивать.</span></div>
+      </section>
+
+      <section class="panel">
+        <h2>Ответ воркера</h2>
+        <pre class="json" id="json">Пока пусто.</pre>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var LORAS = [
+    { name: "snofs", note: "ваша, без триггера" },
+    { name: "knp", note: "ваша, без триггера" },
+    { name: "realism", note: "фотореализм" },
+    { name: "darkbrush", note: "тушь, триггер есть" },
+    { name: "retroanime", note: "ретро-аниме, триггер есть" },
+    { name: "style_reference", note: "стиль по референсу" },
+    { name: "outfit_transfer", note: "перенос одежды" }
+  ];
+  var state = { mode: "edit", imgA: null, imgB: null, busy: false, last: null, runs: [] };
+
+  function store(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+  function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+
+  /* ---------- log ---------- */
+  function log(msg, cls) {
+    var el = document.createElement("div");
+    if (cls) el.className = cls;
+    var t = new Date().toTimeString().slice(0, 8);
+    el.textContent = t + "  " + msg;
+    $("log").appendChild(el);
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+
+  /* ---------- LoRA rows ---------- */
+  var box = $("loras");
+  LORAS.forEach(function (l) {
+    var row = document.createElement("div");
+    row.className = "lora off";
+    row.innerHTML =
+      '<input type="checkbox" data-k="on">' +
+      '<span><span class="nm">' + l.name + '</span><br><span class="tag">' + l.note + "</span></span>" +
+      '<input type="range" min="0" max="1.5" step="0.05" value="1" data-k="s">' +
+      '<span class="val">1.00</span>';
+    var on = row.querySelector('[data-k=on]'), s = row.querySelector('[data-k=s]'), v = row.querySelector(".val");
+    on.addEventListener("change", function () { row.classList.toggle("off", !on.checked); });
+    s.addEventListener("input", function () { v.textContent = Number(s.value).toFixed(2); });
+    row.dataset.name = l.name;
+    box.appendChild(row);
+  });
+  function chosenLoras() {
+    return Array.prototype.slice.call(box.children).filter(function (r) {
+      return r.querySelector('[data-k=on]').checked;
+    }).map(function (r) {
+      return { name: r.dataset.name, strength: Number(r.querySelector('[data-k=s]').value) };
+    });
+  }
+
+  /* ---------- image drops ---------- */
+  function wireDrop(el, slot) {
+    var input = document.createElement("input");
+    input.type = "file"; input.accept = "image/png,image/jpeg,image/webp"; input.hidden = true;
+    document.body.appendChild(input);
+    function take(file) {
+      if (!file) return;
+      var r = new FileReader();
+      r.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          state[slot] = { dataUri: r.result, w: img.naturalWidth, h: img.naturalHeight,
+                          bytes: file.size, name: file.name };
+          el.classList.add("has");
+          el.innerHTML = '<img alt="">' +
+            '<div class="meta">' + img.naturalWidth + "×" + img.naturalHeight + "  ·  " +
+            (file.size / 1048576).toFixed(2) + " MB  ·  " + file.name + "</div>";
+          el.querySelector("img").src = r.result;
+          if (slot === "imgA") fitSize(img.naturalWidth, img.naturalHeight);
+          checkSize();
+          log("загружен " + slot.replace("img", "референс ") + ": " + img.naturalWidth + "×" + img.naturalHeight);
+        };
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    }
+    input.addEventListener("change", function () { take(input.files[0]); });
+    el.addEventListener("click", function () { input.click(); });
+    el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+    el.addEventListener("dragover", function (e) { e.preventDefault(); el.classList.add("over"); });
+    el.addEventListener("dragleave", function () { el.classList.remove("over"); });
+    el.addEventListener("drop", function (e) {
+      e.preventDefault(); el.classList.remove("over");
+      take(e.dataTransfer.files && e.dataTransfer.files[0]);
+    });
+  }
+  wireDrop($("dropA"), "imgA");
+  wireDrop($("dropB"), "imgB");
+
+  /* Match the source aspect ratio, snap to /16, stay under the worker's 2.1 MP cap. */
+  function fitSize(w, h) {
+    var MAXPX = 2.1e6, scale = Math.min(1, Math.sqrt(MAXPX / (w * h)));
+    var W = Math.max(256, Math.round(w * scale / 16) * 16);
+    var H = Math.max(256, Math.round(h * scale / 16) * 16);
+    $("width").value = W; $("height").value = H;
+    $("sizeHint").innerHTML = "Подогнано под исходник " + w + "×" + h +
+      ": пропорции сохранены, размер кратен 16 и укладывается в лимит 2.1 МП воркера.";
+  }
+  function checkSize() {
+    var W = +$("width").value, H = +$("height").value, mp = (W * H) / 1e6, msg = "";
+    if (state.imgA && state.imgB && mp > 1.5) {
+      msg = "Два референса при " + mp.toFixed(2) + " МП — личности могут смешаться. Авторы советуют 1–1.5 МП, потом апскейл.";
+    } else if (mp > 2.1) {
+      msg = mp.toFixed(2) + " МП превышает лимит воркера 2.1 МП — запрос будет отклонён.";
+    } else if (state.imgA) {
+      var srcAr = state.imgA.w / state.imgA.h, outAr = W / H;
+      if (Math.abs(srcAr - outAr) / srcAr > 0.02) {
+        msg = "Пропорции ответа не совпадают с исходником — правка может лечь только на часть кадра.";
+      }
+    }
+    $("sizeWarn").hidden = !msg;
+    $("sizeWarn").textContent = msg;
+  }
+  ["width", "height"].forEach(function (id) { $(id).addEventListener("input", checkSize); });
+
+  /* ---------- mode ---------- */
+  function setMode(m) {
+    state.mode = m;
+    $("mEdit").setAttribute("aria-pressed", String(m === "edit"));
+    $("mGen").setAttribute("aria-pressed", String(m === "generate"));
+    $("imgBlock").style.display = m === "edit" ? "flex" : "none";
+    $("editAdv").style.display = m === "edit" ? "" : "none";
+    $("steps").value = m === "edit" ? 10 : 8;
+    $("promptHint").innerHTML = m === "edit"
+      ? "В режиме edit пишите <b>инструкцию</b>, что изменить, а не описание всей сцены."
+      : "Опишите кадр целиком. Триггер-слова выбранных LoRA дописываются автоматически.";
+    checkSize();
+  }
+  $("mEdit").addEventListener("click", function () { setMode("edit"); });
+  $("mGen").addEventListener("click", function () { setMode("generate"); });
+
+  $("grounding").addEventListener("input", function () { $("gpVal").textContent = this.value; });
+  $("refboost").addEventListener("input", function () { $("rbVal").textContent = Number(this.value).toFixed(1); });
+
+  /* ---------- access ---------- */
+  $("apiKey").value = load("krea.key", "");
+  $("endpointId").value = load("krea.eid", "9w8pgbzn86me86");
+  $("cogBtn").addEventListener("click", function () { $("settings").classList.toggle("open"); });
+  $("forgetKey").addEventListener("click", function () {
+    store("krea.key", null); $("apiKey").value = ""; setHealth("bad", "ключ забыт"); log("ключ удалён из браузера");
+  });
+  $("saveKey").addEventListener("click", function () {
+    store("krea.key", $("apiKey").value.trim());
+    store("krea.eid", $("endpointId").value.trim());
+    checkHealth();
+  });
+
+  function setHealth(kind, text) {
+    var c = $("health");
+    c.className = "chip" + (kind ? " is-" + kind : "");
+    $("healthText").textContent = text;
+  }
+  function api(path, opts) {
+    var key = $("apiKey").value.trim(), eid = $("endpointId").value.trim();
+    if (!key || !eid) return Promise.reject(new Error("не задан ключ или endpoint ID"));
+    opts = opts || {};
+    opts.headers = Object.assign({ Authorization: "Bearer " + key }, opts.headers || {});
+    return fetch("https://api.runpod.ai/v2/" + eid + path, opts).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error("HTTP " + r.status + " " + JSON.stringify(j).slice(0, 200));
+        return j;
+      });
+    });
+  }
+  function checkHealth() {
+    setHealth("wait", "проверяю…");
+    api("/health").then(function (j) {
+      var w = j.workers;
+      var live = w.ready + w.idle + w.running;
+      setHealth(w.throttled ? "wait" : (live ? "ok" : ""),
+        live ? live + " воркер(ов) готово" : (w.throttled ? w.throttled + " throttled" : "воркеров нет, поднимутся по запросу"));
+      log("health: " + JSON.stringify(w));
+    }).catch(function (e) { setHealth("bad", "нет связи"); log(e.message, "e"); });
+  }
+  if ($("apiKey").value) checkHealth(); else $("settings").classList.add("open");
+
+  /* ---------- run ---------- */
+  function b64of(dataUri) { return dataUri.slice(dataUri.indexOf(",") + 1); }
+
+  $("run").addEventListener("click", function () {
+    if (state.busy) return;
+    var input = {
+      prompt: $("prompt").value.trim(),
+      width: +$("width").value, height: +$("height").value,
+      steps: +$("steps").value, cfg: +$("cfg").value, seed: +$("seed").value
+    };
+    if (!input.prompt) { log("промпт пустой", "e"); return; }
+    var ls = chosenLoras();
+    if (ls.length) input.loras = ls;
+
+    if (state.mode === "edit") {
+      if (!state.imgA) { log("для edit нужен исходник", "e"); $("dropA").focus(); return; }
+      input.action = "edit";
+      input.image = b64of(state.imgA.dataUri);
+      if (state.imgB) input.image_b = b64of(state.imgB.dataUri);
+      input.grounding_px = +$("grounding").value;
+      input.ref_boost = +$("refboost").value;
+    }
+
+    state.busy = true;
+    $("run").disabled = true; $("run").textContent = "Выполняется…";
+    log("отправляю " + (input.action || "generate") +
+        (ls.length ? " с LoRA " + ls.map(function (l) { return l.name + "@" + l.strength; }).join(", ") : " без LoRA"));
+
+    api("/run", { method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ input: input }) })
+      .then(function (j) {
+        if (!j.id) throw new Error("RunPod не вернул id задачи");
+        log("задача " + j.id);
+        return poll(j.id, Date.now());
+      })
+      .then(finish)
+      .catch(function (e) { log(e.message, "e"); setHealth("bad", "ошибка"); })
+      .then(function () {
+        state.busy = false; $("run").disabled = false; $("run").textContent = "Запустить";
+      });
+  });
+
+  function poll(id, t0) {
+    var seen = "";
+    return new Promise(function (resolve, reject) {
+      (function tick() {
+        api("/status/" + id).then(function (st) {
+          if (st.status !== seen) { seen = st.status; log("статус " + st.status); }
+          if (st.status === "IN_QUEUE" || st.status === "IN_PROGRESS") {
+            if (Date.now() - t0 > 20 * 60 * 1000) return reject(new Error("не дождались за 20 минут"));
+            return setTimeout(tick, 4000);
+          }
+          resolve(st);
+        }).catch(reject);
+      })();
+    });
+  }
+
+  function finish(st) {
+    $("json").textContent = JSON.stringify(st, function (k, v) {
+      return k === "images_base64" && Array.isArray(v)
+        ? v.map(function (s) { return "<" + s.length + " символов base64>"; }) : v;
+    }, 2);
+
+    var out = st.output || {};
+    if (st.status !== "COMPLETED" || !out.ok) {
+      var f = out.failure;
+      log(f ? ("отказ [" + f.code + "] " + f.message) : ("задача завершилась как " + st.status), "e");
+      if (!f && out.ok === false) log("причина не пришла — воркер собран до фикса ключа failure", "e");
+      setHealth("bad", "запрос отклонён");
+      return;
+    }
+
+    var b64 = (out.images_base64 || [])[0];
+    if (!b64) { log("в ответе нет images_base64 — вероятно, output_mode не base64", "e"); return; }
+    var uri = "data:image/png;base64," + b64;
+
+    $("stage").innerHTML = "";
+    var img = new Image(); img.src = uri; img.alt = out.final_prompt || "результат";
+    $("stage").appendChild(img);
+
+    $("fTime").textContent = out.time != null ? out.time + " с" : "—";
+    $("fDelay").textContent = st.delayTime != null ? (st.delayTime / 1000).toFixed(1) + " с" : "—";
+    $("fSeed").textContent = out.seed != null ? out.seed : "—";
+    $("fSteps").textContent = out.steps != null ? out.steps : "—";
+    $("fSize").textContent = out.width + "×" + out.height;
+
+    state.last = { uri: uri, b64: b64, out: out };
+    $("copyB64").disabled = false; $("useResult").disabled = false;
+    setHealth("ok", "готово за " + out.time + " с");
+    log("готово: " + (out.action || "generate") + ", " + out.time + " с, seed " + out.seed);
+
+    addRun(uri, out);
+  }
+
+  function addRun(uri, out) {
+    if (!state.runs.length) $("history").innerHTML = "";
+    state.runs.unshift({ uri: uri, out: out });
+    var b = document.createElement("button");
+    var tag = (out.loras && out.loras.length)
+      ? out.loras.map(function (l) { return l.requested_name; }).join("+")
+      : (out.action === "edit" ? "edit" : "без LoRA");
+    b.innerHTML = '<img alt=""><span class="cap">' + tag + "</span>";
+    b.querySelector("img").src = uri;
+    b.addEventListener("click", function () {
+      Array.prototype.forEach.call($("history").children, function (c) { c.removeAttribute("aria-current"); });
+      b.setAttribute("aria-current", "true");
+      $("stage").innerHTML = ""; var i = new Image(); i.src = uri; $("stage").appendChild(i);
+      state.last = { uri: uri, b64: uri.slice(uri.indexOf(",") + 1), out: out };
+      $("fTime").textContent = out.time + " с"; $("fSeed").textContent = out.seed;
+      $("fSteps").textContent = out.steps; $("fSize").textContent = out.width + "×" + out.height;
+    });
+    $("history").insertBefore(b, $("history").firstChild);
+  }
+
+  $("copyB64").addEventListener("click", function () {
+    if (!state.last) return;
+    navigator.clipboard.writeText(state.last.b64).then(function () { log("base64 скопирован"); },
+      function () { log("буфер обмена недоступен", "e"); });
+  });
+  $("useResult").addEventListener("click", function () {
+    if (!state.last) return;
+    var img = new Image();
+    img.onload = function () {
+      state.imgA = { dataUri: state.last.uri, w: img.naturalWidth, h: img.naturalHeight,
+                     bytes: state.last.b64.length, name: "результат.png" };
+      var el = $("dropA");
+      el.classList.add("has");
+      el.innerHTML = '<img alt=""><div class="meta">' + img.naturalWidth + "×" + img.naturalHeight +
+        "  ·  предыдущий результат</div>";
+      el.querySelector("img").src = state.last.uri;
+      setMode("edit"); fitSize(img.naturalWidth, img.naturalHeight); checkSize();
+      log("результат подставлен как исходник — можно править дальше");
+    };
+    img.src = state.last.uri;
+  });
+
+  setMode("edit");
+})();
+</script>
+
+</body>
+</html>
