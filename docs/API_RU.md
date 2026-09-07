@@ -227,13 +227,15 @@ Health не выполняет inference. Он проверяет доступн
 ```json
 {
   "ok": false,
-  "error": {
+  "failure": {
     "code": "lora_error",
     "message": "LoRA 'example' was not found ...",
     "details": {}
   }
 }
 ```
+
+Поле называется `failure`, а не `error`, намеренно: RunPod SDK удаляет ключ `error` из результата handler'а (`rp_job.py`, `job_output.pop("error", None)`), и клиент получал бы `{"ok": false}` без причины сбоя.
 
 Возможные codes:
 
