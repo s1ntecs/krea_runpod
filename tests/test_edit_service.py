@@ -88,3 +88,22 @@ def test_edit_fails_clearly_when_the_identity_lora_is_missing(
         service.process(
             {"action": "edit", "prompt": "x", "image": b64(png_bytes())}, "job-edit-3"
         )
+
+
+def test_edit_echoes_the_identity_controls_it_used(
+    settings: Settings, tmp_path: Path, monkeypatch
+) -> None:
+    _prepare(settings)
+    out = tmp_path / "krea2_edit_00001_.png"
+    out.write_bytes(b"edited")
+    service = _service(settings, monkeypatch, out, [])
+
+    result = service.process(
+        {"action": "edit", "prompt": "x", "image": b64(png_bytes()), "preset": "face"},
+        "job-face",
+    )
+
+    assert result["grounding_px"] == 1024
+    assert result["ref_boost"] == 1.75
+    assert result["steps"] == 12
+    assert "facial identity" in result["system_prompt"].lower()

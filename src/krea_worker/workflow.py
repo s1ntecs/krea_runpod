@@ -228,9 +228,13 @@ def build_edit_workflow(
             "prompt": final_prompt,
             "image": ["src_00", 0],
             "grounding_px": request.grounding_px,
+            "system_prompt": request.system_prompt,
             **encode_extra,
         },
     }
+    # The negative encode is the trained unconditional: empty prompt, same
+    # images, stock system prompt. Steering it too would move it out of the
+    # distribution the LoRA learned, so system_prompt deliberately stays empty.
     workflow["negative"] = {
         "class_type": "Krea2EditGroundedEncode",
         "inputs": {
@@ -238,6 +242,7 @@ def build_edit_workflow(
             "prompt": "",
             "image": ["src_00", 0],
             "grounding_px": request.grounding_px,
+            "system_prompt": "",
             **encode_extra,
         },
     }

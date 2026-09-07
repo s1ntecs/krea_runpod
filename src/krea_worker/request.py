@@ -28,6 +28,23 @@ EDIT_DEFAULT_SCHEDULER = "simple"
 EDIT_DEFAULT_GROUNDING_PX = 768
 EDIT_DEFAULT_REF_BOOST = 4.0
 MAX_EDIT_IMAGES = 2
+MAX_SYSTEM_PROMPT_CHARS = 4000
+
+# Krea2EditGroundedEncode feeds Qwen3-VL a system line before the instruction.
+# Its default asks about objects and background and never mentions people, so
+# identity work benefits from steering the vision encoder at the face instead.
+FACE_SYSTEM_PROMPT = (
+    "Describe the person in the image by detailing their facial identity: face "
+    "shape, eye shape and colour, eyebrows, nose, mouth, jawline, skin tone and "
+    "texture, moles and marks, hairline and hair texture, together with the "
+    "colour, shape, size, texture and spatial relationships of the objects and "
+    "background:"
+)
+
+# Values the node pack and its community recommend for likeness work: grounding
+# at 1024 (the README's suggestion for people), a ref_boost well below the
+# workflow's 4.0 so the face keeps some life, and a couple of extra steps.
+FACE_PRESET = {"grounding_px": 1024, "ref_boost": 1.75, "steps": 12}
 MAX_EDIT_IMAGE_BYTES = 20 * 1024 * 1024
 _DATA_URI = re.compile(r"^data:image/[a-zA-Z0-9.+-]+;base64,")
 _IMAGE_MAGIC = (
@@ -89,6 +106,7 @@ class GenerationRequest:
     grounding_px: int = EDIT_DEFAULT_GROUNDING_PX
     ref_boost: float = EDIT_DEFAULT_REF_BOOST
     ref_boost_a: float = 1.0
+    system_prompt: str = ""
 
     @classmethod
     def parse(cls, payload: dict, settings: Settings) -> "GenerationRequest":
@@ -250,14 +268,41 @@ class GenerationRequest:
             cls._decode_image(item, names[index]) for index, item in enumerate(raw)
         )
 
+        # `preset: "face"` moves the defaults to the settings recommended for
+        # likeness work; anything named explicitly in the payload still wins.
+        preset = str(payload.get("preset", "")).strip().lower()
+        if preset and preset != "face":
+            raise InputError(
+                f"unknown preset '{preset}'", details={"allowed": ["face"]}
+            )
+        defaults_for = FACE_PRESET if preset == "face" else {}
+
+        raw_system = payload.get("system_prompt")
+        if raw_system is None and preset == "face":
+            raw_system = "face"
+        system_prompt = "" if raw_system is None else str(raw_system).strip()
+        if system_prompt.lower() == "face":
+            system_prompt = FACE_SYSTEM_PROMPT
+        if len(system_prompt) > MAX_SYSTEM_PROMPT_CHARS:
+            raise InputError(
+                f"system_prompt must be at most {MAX_SYSTEM_PROMPT_CHARS} characters"
+            )
+
         grounding_px = _as_int(
-            payload.get("grounding_px", EDIT_DEFAULT_GROUNDING_PX), "grounding_px"
+            payload.get(
+                "grounding_px",
+                defaults_for.get("grounding_px", EDIT_DEFAULT_GROUNDING_PX),
+            ),
+            "grounding_px",
         )
         if grounding_px < 0 or grounding_px > 4096:
             raise InputError("grounding_px must be between 0 and 4096")
 
         ref_boost = _as_float(
-            payload.get("ref_boost", EDIT_DEFAULT_REF_BOOST), "ref_boost"
+            payload.get(
+                "ref_boost", defaults_for.get("ref_boost", EDIT_DEFAULT_REF_BOOST)
+            ),
+            "ref_boost",
         )
         ref_boost_a = _as_float(payload.get("ref_boost_a", 1.0), "ref_boost_a")
         for name, value in (("ref_boost", ref_boost), ("ref_boost_a", ref_boost_a)):
@@ -265,7 +310,7 @@ class GenerationRequest:
                 raise InputError(f"{name} must be between 0 and 1000")
 
         defaults = {
-            "steps": EDIT_DEFAULT_STEPS,
+            "steps": defaults_for.get("steps", EDIT_DEFAULT_STEPS),
             "cfg": EDIT_DEFAULT_CFG,
             "scheduler": EDIT_DEFAULT_SCHEDULER,
         }
@@ -276,4 +321,5 @@ class GenerationRequest:
             grounding_px=grounding_px,
             ref_boost=ref_boost,
             ref_boost_a=ref_boost_a,
+            system_prompt=system_prompt,
         )
