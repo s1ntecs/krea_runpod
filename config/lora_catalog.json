@@ -24,6 +24,22 @@
       "description": "Official Krea 2 retro-anime style",
       "source": "Comfy-Org/Krea-2",
       "license": "krea-2-community-license"
+    },
+    "style_reference": {
+      "file": "krea2_style_reference.safetensors",
+      "default_strength": 1.0,
+      "trigger": "",
+      "description": "Reference-image style consistency for Krea 2 Turbo",
+      "source": "ostris/krea2_turbo_style_reference",
+      "license": "krea-2-community-license"
+    },
+    "outfit_transfer": {
+      "file": "krea_outfittransfer.safetensors",
+      "default_strength": 1.0,
+      "trigger": "",
+      "description": "Transfers an outfit from a reference image",
+      "source": "AliveAi/Krea-2-Edit-Outfit-Transfer",
+      "license": "krea-2-community-license"
     }
   }
 }

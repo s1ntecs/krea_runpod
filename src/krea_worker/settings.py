@@ -49,6 +49,7 @@ class Settings:
     output_mode: str
     clean_outputs: bool
     debug_errors: bool
+    edit_lora_name: str = "krea2_identity_edit_v1_2.safetensors"
 
     @property
     def comfy_base_url(self) -> str:
@@ -89,5 +90,8 @@ class Settings:
             poll_interval_seconds=_float("COMFY_POLL_SECONDS", 0.35),
             output_mode=output_mode,
             clean_outputs=_bool("CLEAN_OUTPUTS", True),
+            edit_lora_name=os.getenv(
+                "KREA_EDIT_LORA", "krea2_identity_edit_v1_2.safetensors"
+            ),
             debug_errors=_bool("DEBUG_ERRORS", False),
         )

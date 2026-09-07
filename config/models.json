@@ -72,6 +72,42 @@
       "min_bytes": 100000000,
       "license": "krea-2-community-license",
       "sha256": "ca42107783d9e517c5d62cb9a9db9ab2ba4887d90e9dad97a9d1a7fe6ff14c56"
+    },
+    {
+      "id": "identity-edit",
+      "group": "edit",
+      "required": false,
+      "repo_id": "conradlocke/krea2-identity-edit",
+      "revision": "main",
+      "filename": "krea2_identity_edit_v1_2.safetensors",
+      "target": "loras/krea2_identity_edit_v1_2.safetensors",
+      "min_bytes": 1500000000,
+      "license": "krea-2-community-license",
+      "sha256": "6adf9a69cc9502d286db7b69964d37da7e9cfe4b05b4d004bc275f087d3fd3cf"
+    },
+    {
+      "id": "style-reference",
+      "group": "edit",
+      "required": false,
+      "repo_id": "ostris/krea2_turbo_style_reference",
+      "revision": "main",
+      "filename": "krea2_style_reference.safetensors",
+      "target": "loras/krea2_style_reference.safetensors",
+      "min_bytes": 400000000,
+      "license": "krea-2-community-license",
+      "sha256": "f50df5a9e62e4be8aa926a63dd5bb1a64770c4004f763c1208007ae13daa82b8"
+    },
+    {
+      "id": "outfit-transfer",
+      "group": "edit",
+      "required": false,
+      "repo_id": "AliveAi/Krea-2-Edit-Outfit-Transfer",
+      "revision": "main",
+      "filename": "krea_outfittransfer.safetensors",
+      "target": "loras/krea_outfittransfer.safetensors",
+      "min_bytes": 1000000000,
+      "license": "krea-2-community-license",
+      "sha256": "4d1033032a1a24bb9b09c44b44514c6791241ebc7b91ffe4f5edd70830a8804d"
     }
   ]
 }
