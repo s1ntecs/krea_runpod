@@ -14,6 +14,18 @@
       "sha256": "eb4dd8c612cfd10f64f25b057e6e6bbcb5737c94a7372177e456dbf7579502f1"
     },
     {
+      "id": "krea2-raw-fp8",
+      "group": "raw",
+      "required": false,
+      "repo_id": "Comfy-Org/Krea-2",
+      "revision": "main",
+      "filename": "diffusion_models/krea2_raw_fp8_scaled.safetensors",
+      "target": "diffusion_models/krea2_raw_fp8_scaled.safetensors",
+      "min_bytes": 10000000000,
+      "license": "krea-2-community-license",
+      "sha256": "48cd5d6c100297968349b41a8e77c6591d1dac18a215807f5f25f59e5c54cd61"
+    },
+    {
       "id": "qwen3vl-4b-fp8",
       "group": "core",
       "required": true,

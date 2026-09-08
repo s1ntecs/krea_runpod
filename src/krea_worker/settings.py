@@ -50,10 +50,15 @@ class Settings:
     clean_outputs: bool
     debug_errors: bool
     edit_lora_name: str = "krea2_identity_edit_v1_2.safetensors"
+    raw_unet_name: str = "krea2_raw_fp8_scaled.safetensors"
 
     @property
     def comfy_base_url(self) -> str:
         return f"http://{self.comfy_host}:{self.comfy_port}"
+
+    def unet_for(self, checkpoint: str) -> str:
+        """Turbo is the distilled 8-step branch; raw is the undistilled one."""
+        return self.raw_unet_name if checkpoint == "raw" else self.unet_name
 
     @property
     def lora_root(self) -> Path:
@@ -90,6 +95,9 @@ class Settings:
             poll_interval_seconds=_float("COMFY_POLL_SECONDS", 0.35),
             output_mode=output_mode,
             clean_outputs=_bool("CLEAN_OUTPUTS", True),
+            raw_unet_name=os.getenv(
+                "KREA_RAW_UNET", "krea2_raw_fp8_scaled.safetensors"
+            ),
             edit_lora_name=os.getenv(
                 "KREA_EDIT_LORA", "krea2_identity_edit_v1_2.safetensors"
             ),

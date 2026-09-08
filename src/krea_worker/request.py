@@ -29,6 +29,11 @@ EDIT_DEFAULT_GROUNDING_PX = 768
 EDIT_DEFAULT_REF_BOOST = 4.0
 MAX_EDIT_IMAGES = 2
 MAX_SYSTEM_PROMPT_CHARS = 4000
+ALLOWED_CHECKPOINTS = {"turbo", "raw"}
+
+# Raw is not distilled, so it needs real guidance and more steps than the
+# 8-step Turbo branch. These are the values the Krea 2 model card runs it at.
+RAW_DEFAULTS = {"steps": 20, "cfg": 3.0}
 
 # Krea2EditGroundedEncode feeds Qwen3-VL a system line before the instruction.
 # Its default asks about objects and background and never mentions people, so
@@ -104,6 +109,7 @@ class GenerationRequest:
     loras: Any
     output_mode: str | None
     filename_prefix: str
+    checkpoint: str = "turbo"
     images: tuple = ()
     grounding_px: int = EDIT_DEFAULT_GROUNDING_PX
     ref_boost: float = EDIT_DEFAULT_REF_BOOST
@@ -167,11 +173,19 @@ class GenerationRequest:
         if seed > 2**63 - 1:
             raise InputError("seed must be <= 9223372036854775807")
 
-        steps = _as_int(payload.get("steps", 8), "steps")
+        checkpoint = str(payload.get("checkpoint", "turbo")).strip().lower() or "turbo"
+        if checkpoint not in ALLOWED_CHECKPOINTS:
+            raise InputError(
+                f"unsupported checkpoint '{checkpoint}'",
+                details={"allowed": sorted(ALLOWED_CHECKPOINTS)},
+            )
+        ckpt_defaults = RAW_DEFAULTS if checkpoint == "raw" else {}
+
+        steps = _as_int(payload.get("steps", ckpt_defaults.get("steps", 8)), "steps")
         if steps < 1 or steps > 30:
             raise InputError("steps must be between 1 and 30")
 
-        cfg = _as_float(payload.get("cfg", 1.0), "cfg")
+        cfg = _as_float(payload.get("cfg", ckpt_defaults.get("cfg", 1.0)), "cfg")
         if cfg < 0 or cfg > 10:
             raise InputError("cfg must be between 0 and 10")
 
@@ -222,6 +236,7 @@ class GenerationRequest:
             sampler_name=sampler,
             scheduler=scheduler,
             loras=loras,
+            checkpoint=checkpoint,
             output_mode=output_mode,
             filename_prefix=prefix,
         )
