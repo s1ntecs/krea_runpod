@@ -39,7 +39,7 @@ def build_workflow(
         "unet": {
             "class_type": "UNETLoader",
             "inputs": {
-                "unet_name": settings.unet_name,
+                "unet_name": settings.unet_for(request.checkpoint),
                 "weight_dtype": "default",
             },
         },
@@ -147,7 +147,7 @@ def build_edit_workflow(
     workflow: dict[str, dict] = {
         "unet": {
             "class_type": "UNETLoader",
-            "inputs": {"unet_name": settings.unet_name, "weight_dtype": "default"},
+            "inputs": {"unet_name": settings.unet_for(request.checkpoint), "weight_dtype": "default"},
         },
         "clip": {
             "class_type": "CLIPLoader",

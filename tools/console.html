@@ -256,6 +256,14 @@ img{max-width:100%}[hidden]{display:none!important}</style>
           <p class="hint" id="sizeHint">Размер подставится из исходника: пропорции ответа должны совпадать с ним, иначе правка ляжет на часть кадра.</p>
           <div id="sizeWarn" class="warn" hidden></div>
 
+          <label class="f">Чекпоинт
+            <select id="checkpoint">
+              <option value="turbo" selected>turbo — быстрый, 8–12 шагов</option>
+              <option value="raw">raw — качество, 20 шагов и CFG 3</option>
+            </select>
+          </label>
+          <p class="hint" id="ckptHint">Turbo при CFG 1 не удаляет объекты, а перерисовывает их. Для удалений и там, где не хватает качества, берите raw.</p>
+
           <div class="grid2">
             <label class="f">Seed <span class="hint" style="font-weight:400">−1 = случайный</span>
               <input type="number" id="seed" value="-1" min="-1"></label>
@@ -589,6 +597,11 @@ img{max-width:100%}[hidden]{display:none!important}</style>
     $("editAdv").open = true;
     log("пресет лица: grounding_px 1024, ref_boost 4.0, 12 шагов, системный промпт про лицо");
   });
+  $("checkpoint").addEventListener("change", function () {
+    if (this.value === "raw") { $("steps").value = 20; $("cfg").value = 3; }
+    else { $("steps").value = state.mode === "edit" ? 10 : 8; $("cfg").value = 1; }
+    log("чекпоинт " + this.value + ": шагов " + $("steps").value + ", cfg " + $("cfg").value);
+  });
   $("grounding").addEventListener("input", function () { $("gpVal").textContent = this.value; });
   $("refboost").addEventListener("input", function () { $("rbVal").textContent = Number(this.value).toFixed(1); });
   $("refboosta").addEventListener("input", function () { $("rbaVal").textContent = Number(this.value).toFixed(1); });
@@ -643,7 +656,8 @@ img{max-width:100%}[hidden]{display:none!important}</style>
     var input = {
       prompt: $("prompt").value.trim(),
       width: +$("width").value, height: +$("height").value,
-      steps: +$("steps").value, cfg: +$("cfg").value, seed: +$("seed").value
+      steps: +$("steps").value, cfg: +$("cfg").value, seed: +$("seed").value,
+      checkpoint: $("checkpoint").value
     };
     if (!input.prompt) { log("промпт пустой", "e"); return; }
     var ls = chosenLoras();

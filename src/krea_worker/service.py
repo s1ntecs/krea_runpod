@@ -244,6 +244,7 @@ class KreaService:
         started = time.monotonic()
         request = GenerationRequest.parse(payload, self.settings)
         self.validate_model_files()
+        self._checkpoint_file(request.checkpoint)
         loras = self.registry.resolve(request.loras)
         safe_job = "".join(ch for ch in job_id if ch.isalnum() or ch in "-_")[-24:]
         prefix = (
@@ -287,12 +288,26 @@ class KreaService:
             "height": request.height,
             "num_images": len(images),
             "cfg": request.cfg,
+            "checkpoint": request.checkpoint,
             "sampler_name": request.sampler_name,
             "scheduler": request.scheduler,
             "loras": [lora.public_dict() for lora in loras],
             "final_prompt": workflow_result.final_prompt,
             "output_mode": output_mode,
         }
+
+    def _checkpoint_file(self, checkpoint: str) -> None:
+        """Raw ships as an optional manifest group, so it may simply be absent."""
+        if checkpoint != "raw":
+            return
+        name = self.settings.raw_unet_name
+        path = self.settings.model_root / "diffusion_models" / name
+        if not path.is_file() or path.stat().st_size < _FALLBACK_MIN_MODEL_BYTES:
+            raise ModelFileError(
+                "The Krea 2 Raw checkpoint is missing; the 'raw' group of the "
+                "model manifest is not installed",
+                details={"expected_path": str(path), "checkpoint": name},
+            )
 
     def _edit_lora_file(self) -> str:
         """Ensures the identity-edit LoRA is on disk before we build an edit graph."""
@@ -310,6 +325,7 @@ class KreaService:
         started = time.monotonic()
         request = GenerationRequest.parse_edit(payload, self.settings)
         self.validate_model_files()
+        self._checkpoint_file(request.checkpoint)
         edit_lora = self._edit_lora_file()
         loras = self.registry.resolve(request.loras)
         safe_job = "".join(ch for ch in job_id if ch.isalnum() or ch in "-_")[-24:]
@@ -366,6 +382,7 @@ class KreaService:
             "height": request.height,
             "num_images": len(images),
             "cfg": request.cfg,
+            "checkpoint": request.checkpoint,
             "sampler_name": request.sampler_name,
             "scheduler": request.scheduler,
             "grounding_px": request.grounding_px,
