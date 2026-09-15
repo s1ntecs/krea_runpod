@@ -8,7 +8,12 @@ from typing import Any
 
 from .errors import LoraError
 
-_MIN_LORA_BYTES = 1024 * 1024
+# Some Krea 2 utility LoRAs intentionally contain only a handful of tensors and
+# are measured in bytes or kilobytes rather than megabytes. Size alone is not a
+# useful integrity check, but keeping a tiny floor still rejects empty/truncated
+# files. Git LFS pointers are detected explicitly below.
+_MIN_LORA_BYTES = 128
+_GIT_LFS_SIGNATURE = b"version https://git-lfs.github.com/spec/v1"
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,17 @@ class LoraRegistry:
         if not normalized or path.is_absolute() or ".." in path.parts:
             raise LoraError(f"Unsafe LoRA name/path: {value!r}")
         return path.as_posix()
+
+    @staticmethod
+    def _usable_lora_file(path: Path) -> bool:
+        try:
+            if not path.is_file() or path.stat().st_size < _MIN_LORA_BYTES:
+                return False
+            with path.open("rb") as handle:
+                prefix = handle.read(len(_GIT_LFS_SIGNATURE))
+            return not prefix.startswith(_GIT_LFS_SIGNATURE)
+        except OSError:
+            return False
 
     def _installed(self) -> dict[str, Path]:
         if not self.lora_root.exists():
@@ -101,7 +117,7 @@ class LoraRegistry:
                 details={"available_files": available},
             )
         path = installed[relative]
-        if path.stat().st_size < _MIN_LORA_BYTES:
+        if not self._usable_lora_file(path):
             raise LoraError(
                 f"LoRA file looks incomplete or is a Git LFS pointer: {relative}",
                 details={"size_bytes": path.stat().st_size},
@@ -136,6 +152,19 @@ class LoraRegistry:
             else:
                 raise LoraError("Each LoRA must be a string or an object")
         return specs
+
+    @staticmethod
+    def _strength_bounds(entry: dict | None, name: str) -> tuple[float, float]:
+        raw_min = entry.get("min_strength", -2.0) if entry else -2.0
+        raw_max = entry.get("max_strength", 2.0) if entry else 2.0
+        try:
+            minimum = float(raw_min)
+            maximum = float(raw_max)
+        except (TypeError, ValueError) as exc:
+            raise LoraError(f"Invalid strength bounds in catalog for LoRA '{name}'") from exc
+        if not math.isfinite(minimum) or not math.isfinite(maximum) or minimum > maximum:
+            raise LoraError(f"Invalid strength bounds in catalog for LoRA '{name}'")
+        return minimum, maximum
 
     def resolve(self, raw: Any) -> list[ResolvedLora]:
         specs = self._normalize_specs(raw)
@@ -173,9 +202,10 @@ class LoraRegistry:
                 raise LoraError(f"Invalid strength for LoRA '{name}'") from exc
             if not math.isfinite(strength):
                 raise LoraError(f"LoRA strength for '{name}' must be finite")
-            if strength < -2.0 or strength > 2.0:
+            minimum, maximum = self._strength_bounds(catalog_entry, name)
+            if strength < minimum or strength > maximum:
                 raise LoraError(
-                    f"LoRA strength for '{name}' must be between -2.0 and 2.0"
+                    f"LoRA strength for '{name}' must be between {minimum:g} and {maximum:g}"
                 )
 
             trigger_default = str(catalog_entry.get("trigger", "")) if registered else ""
@@ -214,13 +244,16 @@ class LoraRegistry:
         for alias, entry in sorted(catalog.items()):
             file_name = str(entry.get("file", ""))
             path = installed_lower.get(file_name.lower())
+            minimum, maximum = self._strength_bounds(entry, alias)
             result.append(
                 {
                     "name": alias,
                     "file": file_name,
-                    "installed": bool(path and path.stat().st_size >= _MIN_LORA_BYTES),
+                    "installed": bool(path and self._usable_lora_file(path)),
                     "size_bytes": path.stat().st_size if path else None,
                     "default_strength": entry.get("default_strength", 1.0),
+                    "min_strength": minimum,
+                    "max_strength": maximum,
                     "trigger": entry.get("trigger", ""),
                     "description": entry.get("description", ""),
                     "source": entry.get("source", ""),
@@ -236,9 +269,11 @@ class LoraRegistry:
                 {
                     "name": relative,
                     "file": relative,
-                    "installed": path.stat().st_size >= _MIN_LORA_BYTES,
+                    "installed": self._usable_lora_file(path),
                     "size_bytes": path.stat().st_size,
                     "default_strength": 1.0,
+                    "min_strength": -2.0,
+                    "max_strength": 2.0,
                     "trigger": "",
                     "description": "LoRA discovered on the network volume",
                     "source": "",
