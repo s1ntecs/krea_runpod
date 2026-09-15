@@ -72,6 +72,40 @@ def test_rejects_lfs_pointer_sized_file(tmp_path: Path) -> None:
         registry.resolve("broken")
 
 
+def test_accepts_tiny_utility_lora_and_catalog_strength_bounds(tmp_path: Path) -> None:
+    lora_root = tmp_path / "loras"
+    path = lora_root / "fedor_bypass.safetensors"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"S" * 1024)
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "loras": {
+                    "fedor_bypass": {
+                        "file": "fedor_bypass.safetensors",
+                        "default_strength": 3.0,
+                        "min_strength": 0.0,
+                        "max_strength": 5.0,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    registry = LoraRegistry(lora_root, catalog)
+
+    resolved = registry.resolve("fedor_bypass")[0]
+    assert resolved.file == "fedor_bypass.safetensors"
+    assert resolved.strength == 3.0
+
+    resolved = registry.resolve({"name": "fedor_bypass", "strength": 5.0})[0]
+    assert resolved.strength == 5.0
+
+    with pytest.raises(LoraError, match="between 0 and 5"):
+        registry.resolve({"name": "fedor_bypass", "strength": 5.1})
+
+
 def test_parses_append_trigger_boolean_and_rejects_nan(tmp_path: Path) -> None:
     lora_root = tmp_path / "loras"
     write_large(lora_root / "style.safetensors")

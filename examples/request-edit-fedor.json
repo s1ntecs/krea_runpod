@@ -1,0 +1,16 @@
+{
+  "input": {
+    "action": "edit",
+    "prompt": "Keep the same person and facial identity, change the outfit to a black leather jacket",
+    "image": "<base64 PNG>",
+    "preset": "face",
+    "width": 1024,
+    "height": 1024,
+    "loras": [
+      {
+        "name": "fedor_bypass",
+        "strength": 3.0
+      }
+    ]
+  }
+}

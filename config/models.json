@@ -98,6 +98,30 @@
       "sha256": "6adf9a69cc9502d286db7b69964d37da7e9cfe4b05b4d004bc275f087d3fd3cf"
     },
     {
+      "id": "fedor-bypass",
+      "group": "edit-tools",
+      "required": false,
+      "repo_id": "diobrando0/krea2_loras_public",
+      "revision": "main",
+      "filename": "fedor_bypass.safetensors",
+      "target": "loras/fedor_bypass.safetensors",
+      "min_bytes": 900,
+      "license": "unknown; verify upstream terms before production use",
+      "sha256": "0f9e2350ce7d4da5e0f0dc8ae02bbf99f2db4c4143beae899f9f808fc26d7d2c"
+    },
+    {
+      "id": "textfusion-refusal-reduction",
+      "group": "edit-tools",
+      "required": false,
+      "repo_id": "Quiho/Krea2_TextFusion_Refusal-Reduction_LoRA_v1.0_lora",
+      "revision": "main",
+      "filename": "Krea2_TextFusion_Refusal_Reduction.safetensors",
+      "target": "loras/Krea2_TextFusion_Refusal_Reduction.safetensors",
+      "min_bytes": 26000000,
+      "license": "unknown; verify upstream terms before production use",
+      "sha256": "84ec722ddab93f6489c5315bca25de5dd1a7b7ec5045a3c4ce2f97f62e54e8e6"
+    },
+    {
       "id": "style-reference",
       "group": "edit",
       "required": false,
