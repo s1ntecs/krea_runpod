@@ -41,8 +41,10 @@ def test_custom_system_prompt_passes_through_verbatim(settings: Settings) -> Non
 
 def test_system_prompt_does_not_touch_the_trained_unconditional(settings: Settings) -> None:
     """The negative encode is the trained unconditional; overriding its system
-    prompt would move it out of distribution."""
-    wf = _wf(settings, system_prompt="face")
+    prompt would move it out of distribution. It only exists above CFG 1 - at
+    CFG 1 the sampler skips uncond, so the graph zeroes it out instead."""
+    wf = _wf(settings, system_prompt="face", cfg=3.0)
+    assert wf["negative"]["class_type"] == "Krea2EditGroundedEncode"
     assert wf["negative"]["inputs"]["system_prompt"] == ""
 
 

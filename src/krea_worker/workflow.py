@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from .lora_registry import ResolvedLora
@@ -249,17 +250,28 @@ def build_edit_workflow(
     # The negative encode is the trained unconditional: empty prompt, same
     # images, stock system prompt. Steering it too would move it out of the
     # distribution the LoRA learned, so system_prompt deliberately stays empty.
-    workflow["negative"] = {
-        "class_type": "Krea2EditGroundedEncode",
-        "inputs": {
-            "clip": ["clip", 0],
-            "prompt": "",
-            "image": ["src_00", 0],
-            "grounding_px": request.grounding_px,
-            "system_prompt": "",
-            **encode_extra,
-        },
-    }
+    #
+    # At CFG 1 the sampler drops the uncond pass entirely (ComfyUI's cfg1
+    # optimisation), so grounding the negative would run Qwen3-VL over the same
+    # image a second time and throw the result away - about a third of the
+    # request. Zeroed conditioning costs nothing and is never evaluated.
+    if math.isclose(request.cfg, 1.0):
+        workflow["negative"] = {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {"conditioning": ["positive", 0]},
+        }
+    else:
+        workflow["negative"] = {
+            "class_type": "Krea2EditGroundedEncode",
+            "inputs": {
+                "clip": ["clip", 0],
+                "prompt": "",
+                "image": ["src_00", 0],
+                "grounding_px": request.grounding_px,
+                "system_prompt": "",
+                **encode_extra,
+            },
+        }
     workflow["sampler"] = {
         "class_type": "KSampler",
         "inputs": {

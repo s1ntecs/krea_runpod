@@ -9,18 +9,20 @@ from test_edit_request import b64, png_bytes
 EDIT_LORA = "krea2_identity_edit_v1_2.safetensors"
 
 
-def _request(settings: Settings, two: bool = False) -> GenerationRequest:
+def _request(settings: Settings, two: bool = False, cfg: float | None = None) -> GenerationRequest:
     payload = {"prompt": "change her outfit to a red raincoat",
                "image": b64(png_bytes((1, 2, 3)))}
     if two:
         payload["image_b"] = b64(png_bytes((9, 8, 7)))
+    if cfg is not None:
+        payload["cfg"] = cfg
     return GenerationRequest.parse_edit(payload, settings)
 
 
-def _build(settings: Settings, loras=None, two: bool = False):
+def _build(settings: Settings, loras=None, two: bool = False, cfg: float | None = None):
     names = ["scene.png", "subject.png"][: 2 if two else 1]
     return build_edit_workflow(
-        _request(settings, two), loras or [], settings, "krea2_edit", names, EDIT_LORA
+        _request(settings, two, cfg), loras or [], settings, "krea2_edit", names, EDIT_LORA
     )
 
 
@@ -37,11 +39,27 @@ def test_edit_graph_has_no_model_sampling_node(settings: Settings) -> None:
 
 
 def test_both_conditionings_are_grounded_and_negative_is_empty(settings: Settings) -> None:
-    wf = _build(settings).workflow
+    wf = _build(settings, cfg=3.0).workflow
     assert wf["positive"]["class_type"] == "Krea2EditGroundedEncode"
     assert wf["negative"]["class_type"] == "Krea2EditGroundedEncode"
     assert wf["negative"]["inputs"]["prompt"] == ""
     assert wf["positive"]["inputs"]["grounding_px"] == 768
+
+
+def test_negative_encode_is_dropped_at_cfg_one(settings: Settings) -> None:
+    """At CFG 1 the sampler never evaluates uncond, so a second grounded encode
+    of the same image is pure cost - roughly a third of the request."""
+    wf = _build(settings, cfg=1.0).workflow
+    assert wf["negative"]["class_type"] == "ConditioningZeroOut"
+    assert wf["negative"]["inputs"]["conditioning"] == ["positive", 0]
+    grounded = [k for k, n in wf.items() if n["class_type"] == "Krea2EditGroundedEncode"]
+    assert grounded == ["positive"]
+
+
+def test_negative_encode_is_kept_above_cfg_one(settings: Settings) -> None:
+    wf = _build(settings, cfg=2.5).workflow
+    assert wf["negative"]["class_type"] == "Krea2EditGroundedEncode"
+    assert wf["negative"]["inputs"]["grounding_px"] == wf["positive"]["inputs"]["grounding_px"]
 
 
 def test_identity_lora_loads_before_user_loras(settings: Settings) -> None:
