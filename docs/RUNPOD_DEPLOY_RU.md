@@ -46,12 +46,26 @@ PRELOAD_FILE_CACHE=true
 PRELOAD_LORAS=realism,darkbrush
 PRELOAD_STRICT=true
 WARMUP_ON_START=false
+COMFY_EXTRA_ARGS=
 OUTPUT_MODE=auto
 MAX_MEGAPIXELS=2.1
 MAX_TOTAL_MEGAPIXELS=2.1
 MAX_BATCH_SIZE=2
 JOB_TIMEOUT_SECONDS=900
 ```
+
+`COMFY_EXTRA_ARGS` уходит в командную строку ComfyUI как есть и позволяет менять
+режим работы без пересборки образа:
+
+| Флаг | Что даёт |
+| --- | --- |
+| `--highvram` | держит модель в VRAM между запросами, поэтому LoRA не патчатся заново на каждый запрос; требует карты, куда веса влезают целиком (20 ГБ + активации) |
+| `--fast` | fp16-накопление и быстрые ядра, немного в ущерб точности |
+| `--use-sage-attention` | другой бэкенд внимания; работает, только если пакет есть в образе |
+| `--cache-lru 20` | кэш результатов нод вместо classic — помогает, когда часть графа между запросами не меняется |
+
+Начинать стоит с одного флага: включили, замерили `executionTime` на прогретом
+воркере, и только потом добавлять следующий.
 
 ## 4. Создать endpoint
 

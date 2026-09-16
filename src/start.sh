@@ -94,6 +94,15 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Performance flags are left to the deployment: --highvram keeps the model
+# resident so LoRA patches are not reapplied on every request, --fast and the
+# attention backends trade a little precision for speed. Passing them through
+# an env var means trying one costs an endpoint setting, not an image rebuild.
+read -r -a comfy_extra <<< "${COMFY_EXTRA_ARGS:-}"
+if [ ${#comfy_extra[@]} -gt 0 ]; then
+  echo "Extra ComfyUI args: ${comfy_extra[*]}"
+fi
+
 echo "Starting ComfyUI on ${COMFY_HOST}:${COMFY_PORT}"
 python -u /comfyui/main.py \
   --disable-auto-launch \
@@ -103,7 +112,8 @@ python -u /comfyui/main.py \
   --extra-model-paths-config /tmp/krea-extra-model-paths.yaml \
   --output-directory "$OUTPUT_ROOT" \
   --verbose "$COMFY_LOG_LEVEL" \
-  --log-stdout &
+  --log-stdout \
+  ${comfy_extra[@]+"${comfy_extra[@]}"} &
 COMFY_PID=$!
 echo "$COMFY_PID" > /tmp/comfyui.pid
 
