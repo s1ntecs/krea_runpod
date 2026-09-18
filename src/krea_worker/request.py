@@ -27,6 +27,10 @@ EDIT_DEFAULT_CFG = 1.0
 EDIT_DEFAULT_SCHEDULER = "simple"
 EDIT_DEFAULT_GROUNDING_PX = 768
 EDIT_DEFAULT_REF_BOOST = 4.0
+# When auto_face_mask finds nothing, ref_boost 4 would hold the whole reference
+# and the instruction would not apply at all. 1.75 is the model card's value for
+# keeping likeness without freezing the frame.
+FALLBACK_REF_BOOST = 1.75
 MAX_EDIT_IMAGES = 2
 MAX_SYSTEM_PROMPT_CHARS = 4000
 ALLOWED_CHECKPOINTS = {"turbo", "raw"}
@@ -116,6 +120,7 @@ class GenerationRequest:
     ref_boost_a: float = 1.0
     system_prompt: str = ""
     ref_boost_mask: bytes | None = None
+    auto_face_mask: bool = False
 
     @classmethod
     def parse(cls, payload: dict, settings: Settings) -> "GenerationRequest":
@@ -323,6 +328,12 @@ class GenerationRequest:
             None if raw_mask is None else cls._decode_image(raw_mask, "ref_boost_mask")
         )
 
+        # Drawing that mask by hand does not scale to a service, so the worker
+        # can locate the face itself. An explicit mask still wins.
+        raw_auto = payload.get("auto_face_mask", False)
+        if not isinstance(raw_auto, bool):
+            raise InputError("auto_face_mask must be a boolean")
+
         ref_boost = _as_float(
             payload.get(
                 "ref_boost", defaults_for.get("ref_boost", EDIT_DEFAULT_REF_BOOST)
@@ -348,4 +359,5 @@ class GenerationRequest:
             ref_boost_a=ref_boost_a,
             system_prompt=system_prompt,
             ref_boost_mask=ref_boost_mask,
+            auto_face_mask=raw_auto,
         )

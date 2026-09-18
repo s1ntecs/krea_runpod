@@ -37,6 +37,15 @@ RUN git clone --filter=blob:none https://github.com/lbouaraba/comfyui-krea2edit.
     && git -C /comfyui/custom_nodes/comfyui-krea2edit checkout --quiet "${KREA2EDIT_REF}" \
     && rm -rf /comfyui/custom_nodes/comfyui-krea2edit/.git
 
+# YuNet face detector for auto_face_mask. 230KB, baked into the image rather
+# than kept on the volume so it is present in both deployment shapes. The file
+# name carries its version (2023mar); the sha256 pins the exact bytes.
+ARG YUNET_SHA256=8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
+RUN mkdir -p /opt/krea/assets \
+    && curl -fsSL -o /opt/krea/assets/face_detection_yunet.onnx \
+      "https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
+    && echo "${YUNET_SHA256}  /opt/krea/assets/face_detection_yunet.onnx" | sha256sum -c -
+
 # Optional weight baking. Empty (default) keeps the volume-based image.
 # Kept ahead of `COPY src` so editing worker code never re-downloads weights.
 ARG BAKE_MODEL_GROUPS=
