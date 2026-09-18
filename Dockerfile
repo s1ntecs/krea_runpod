@@ -41,7 +41,9 @@ RUN git clone --filter=blob:none https://github.com/lbouaraba/comfyui-krea2edit.
 # than kept on the volume so it is present in both deployment shapes. The file
 # name carries its version (2023mar); the sha256 pins the exact bytes.
 ARG YUNET_SHA256=8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
-ARG YUNET_URL=https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
+# The model is stored in Git LFS, so raw.githubusercontent.com serves a 131-byte
+# pointer instead of the file. media.githubusercontent.com/media resolves it.
+ARG YUNET_URL=https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
 # Fetched with python rather than curl: the base image has no curl, and this
 # way the checksum is verified before the file is written.
 RUN mkdir -p /opt/krea/assets && python - "$YUNET_URL" "$YUNET_SHA256" <<'PY'
@@ -51,6 +53,8 @@ import urllib.request
 
 url, expected = sys.argv[1], sys.argv[2]
 data = urllib.request.urlopen(url, timeout=180).read()
+if data.startswith(b"version https://git-lfs.github.com/spec/v1"):
+    raise SystemExit(f"got a Git LFS pointer instead of the model from {url}")
 actual = hashlib.sha256(data).hexdigest()
 if actual != expected:
     raise SystemExit(f"YuNet checksum mismatch: expected {expected}, got {actual}")
