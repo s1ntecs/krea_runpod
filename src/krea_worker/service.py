@@ -7,11 +7,14 @@ import time
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from dataclasses import replace
+
 from .comfy_client import ComfyClient
 from .errors import InputError, ModelFileError
+from .face_mask import auto_face_mask
 from .lora_registry import LoraRegistry
 from .output import OutputManager
-from .request import GenerationRequest
+from .request import FALLBACK_REF_BOOST, GenerationRequest
 from .settings import Settings
 from .workflow import build_edit_workflow, build_workflow
 
@@ -321,6 +324,27 @@ class KreaService:
             )
         return name
 
+    @staticmethod
+    def _resolve_face_mask(
+        request: GenerationRequest,
+    ) -> tuple[GenerationRequest, str | None, int | None]:
+        """Draw the ref_boost mask from the detected face when asked to.
+
+        The mask applies to the last reference, matching the node's own rule.
+        Without a face, a mask cannot be drawn and ref_boost is relaxed - left
+        at 4.0 it would reproduce the source and ignore the instruction.
+        """
+        if not request.auto_face_mask:
+            return request, None, None
+        if request.ref_boost_mask is not None:
+            return request, "manual", None
+
+        mask, faces = auto_face_mask(request.images[-1])
+        if mask is None:
+            logger.info("auto_face_mask found no face; relaxing ref_boost")
+            return replace(request, ref_boost=FALLBACK_REF_BOOST), "fallback", 0
+        return replace(request, ref_boost_mask=mask), "detected", faces
+
     def edit(self, payload: dict, job_id: str) -> dict:
         started = time.monotonic()
         request = GenerationRequest.parse_edit(payload, self.settings)
@@ -334,6 +358,8 @@ class KreaService:
             if safe_job
             else request.filename_prefix
         )
+
+        request, mask_state, faces_found = self._resolve_face_mask(request)
 
         with _GENERATION_LOCK:
             self.client.wait_ready(timeout=30)
@@ -390,6 +416,8 @@ class KreaService:
             "system_prompt": request.system_prompt,
             "reference_images": len(request.images),
             "ref_boost_mask": request.ref_boost_mask is not None,
+            **({"auto_face_mask": mask_state} if mask_state else {}),
+            **({"faces_found": faces_found} if faces_found is not None else {}),
             "edit_lora": edit_lora,
             "loras": [lora.public_dict() for lora in loras],
             "final_prompt": workflow_result.final_prompt,
