@@ -41,10 +41,23 @@ RUN git clone --filter=blob:none https://github.com/lbouaraba/comfyui-krea2edit.
 # than kept on the volume so it is present in both deployment shapes. The file
 # name carries its version (2023mar); the sha256 pins the exact bytes.
 ARG YUNET_SHA256=8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
-RUN mkdir -p /opt/krea/assets \
-    && curl -fsSL -o /opt/krea/assets/face_detection_yunet.onnx \
-      "https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
-    && echo "${YUNET_SHA256}  /opt/krea/assets/face_detection_yunet.onnx" | sha256sum -c -
+ARG YUNET_URL=https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
+# Fetched with python rather than curl: the base image has no curl, and this
+# way the checksum is verified before the file is written.
+RUN mkdir -p /opt/krea/assets && python - "$YUNET_URL" "$YUNET_SHA256" <<'PY'
+import hashlib
+import sys
+import urllib.request
+
+url, expected = sys.argv[1], sys.argv[2]
+data = urllib.request.urlopen(url, timeout=180).read()
+actual = hashlib.sha256(data).hexdigest()
+if actual != expected:
+    raise SystemExit(f"YuNet checksum mismatch: expected {expected}, got {actual}")
+with open("/opt/krea/assets/face_detection_yunet.onnx", "wb") as handle:
+    handle.write(data)
+print(f"YuNet ready: {len(data):,} bytes")
+PY
 
 # Optional weight baking. Empty (default) keeps the volume-based image.
 # Kept ahead of `COPY src` so editing worker code never re-downloads weights.
