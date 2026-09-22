@@ -1,0 +1,270 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Krea 2 worker request",
+  "description": "Body of a RunPod /run or /runsync call. Everything goes inside `input`. Limits here mirror the worker's own validation in src/krea_worker/request.py; anything outside them comes back as {\"ok\": false, \"failure\": {\"code\": \"invalid_input\"}}.",
+  "type": "object",
+  "required": [
+    "input"
+  ],
+  "properties": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "generate",
+            "edit",
+            "list_loras",
+            "health",
+            "validate_runtime"
+          ],
+          "default": "generate",
+          "description": "generate - make an image from a prompt. edit - change a supplied image. The other three are service calls and take no further fields."
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 6000,
+          "description": "For generate: what the picture shows. For edit: an INSTRUCTION of what to change ('change her outfit to...', 'create a photo of this person sitting...'). A description of the frame is read as 'it already looks like this' and nothing happens."
+        },
+        "negative_prompt": {
+          "type": "string",
+          "maxLength": 3000,
+          "description": "Only has an effect above cfg 1, i.e. on the raw checkpoint."
+        },
+        "image": {
+          "type": "string",
+          "description": "edit only, required. Either base64 (a data:image/...;base64, prefix is accepted) or a direct http(s) URL the worker downloads. PNG, JPEG or WebP, up to 20 MB. Redirects are not followed and addresses inside private networks are refused."
+        },
+        "image_b": {
+          "type": "string",
+          "description": "Second reference, same formats as `image`. Training order is fixed: the SCENE goes in `image`, the PERSON in `image_b`. Identity is taken from the last reference."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 2048,
+          "multipleOf": 16,
+          "default": 1024,
+          "description": "Must be divisible by 16. For edit, keep the aspect ratio of the source or the edit lands on part of the frame."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 2048,
+          "multipleOf": 16,
+          "default": 1024
+        },
+        "num_images": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2,
+          "default": 1,
+          "description": "width*height*num_images must stay under 2.1 megapixels in total."
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Defaults to 8 on turbo, 20 on raw. Edit defaults to 10, or 12 with preset face."
+        },
+        "cfg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Defaults to 1.0 on turbo, 3.0 on raw. At cfg 1 the negative branch is skipped entirely, which also makes edit about a third faster."
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 9223372036854775807,
+          "default": -1,
+          "description": "-1 picks a random seed. The same seed with identical settings reproduces the image exactly."
+        },
+        "checkpoint": {
+          "type": "string",
+          "enum": [
+            "turbo",
+            "raw"
+          ],
+          "default": "turbo",
+          "description": "turbo is distilled and fast. raw is undistilled: better for removing objects and for quality, but needs ~20 steps and cfg ~3."
+        },
+        "sampler_name": {
+          "type": "string",
+          "enum": [
+            "euler",
+            "euler_ancestral",
+            "dpmpp_2m",
+            "dpmpp_2m_sde",
+            "heun"
+          ],
+          "default": "euler"
+        },
+        "scheduler": {
+          "type": "string",
+          "enum": [
+            "beta",
+            "simple",
+            "normal",
+            "sgm_uniform"
+          ],
+          "default": "beta",
+          "description": "Edit defaults to simple."
+        },
+        "output_mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "base64",
+            "s3",
+            "path"
+          ],
+          "default": "auto"
+        },
+        "loras": {
+          "description": "Up to 4 by default (the endpoint's MAX_LORAS setting). A bare string names one; an object sets its strength. The allowed strength range differs per LoRA - ask action list_loras for min_strength/max_strength, since values outside it come back as lora_error.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "strength": {
+                  "type": "number"
+                },
+                "trigger": {
+                  "type": "string"
+                },
+                "append_trigger": {
+                  "type": "boolean"
+                }
+              }
+            },
+            {
+              "type": "array",
+              "maxItems": 4,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "name"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "strength": {
+                        "type": "number"
+                      },
+                      "trigger": {
+                        "type": "string"
+                      },
+                      "append_trigger": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "face"
+          ],
+          "description": "edit only. Sets grounding_px 1024, ref_boost 4.0, steps 12 and the identity system prompt. Explicit fields still win."
+        },
+        "grounding_px": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4096,
+          "default": 768,
+          "description": "edit only. Resolution Qwen3-VL looks at. LOWER follows the instruction more and frees composition - use 384 or less to change a pose. HIGHER holds the source - 1024 suits inserting a person into a scene."
+        },
+        "ref_boost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 4.0,
+          "description": "edit only. How hard to pull toward the LAST reference. 4.0 is maximum likeness, 1.0 is off. Without a mask, 4.0 reproduces the source and the instruction will not apply."
+        },
+        "ref_boost_a": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 1.0,
+          "description": "edit only. Same for the FIRST reference (the scene). Keep near 1.0 when inserting a person, or the scene dictates the pose."
+        },
+        "ref_boost_mask": {
+          "type": "string",
+          "description": "edit only. base64 or URL of a mask: white where ref_boost applies. Mask the FACE - then the face is pinned and the pose is free. Masking the body freezes exactly what you wanted changed. Applies to the LAST reference."
+        },
+        "auto_face_mask": {
+          "type": "boolean",
+          "default": false,
+          "description": "edit only. The worker finds the face on the last reference and draws the mask itself, so no ellipse has to be supplied. With several faces the largest wins. With no face it drops the mask and lowers ref_boost to 1.75. An explicit ref_boost_mask always wins over this."
+        },
+        "system_prompt": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "edit only. Steers the vision encoder. The literal value \"face\" expands to a built-in line about facial identity; the stock prompt never mentions people at all."
+        },
+        "filename_prefix": {
+          "type": "string",
+          "default": "krea2"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "edit"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "prompt",
+              "image"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "generate"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "prompt"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

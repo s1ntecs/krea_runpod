@@ -1,0 +1,16 @@
+{
+  "input": {
+    "action": "edit",
+    "prompt": "Create a photo of this person standing with her arms crossed, facing the camera.",
+    "image": "https://cdn.example.com/portrait.jpg",
+    "auto_face_mask": true,
+    "system_prompt": "face",
+    "grounding_px": 384,
+    "ref_boost": 4.0,
+    "steps": 12,
+    "width": 976,
+    "height": 1600,
+    "checkpoint": "turbo",
+    "cfg": 1
+  }
+}
