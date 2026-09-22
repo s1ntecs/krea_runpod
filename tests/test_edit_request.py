@@ -90,3 +90,39 @@ def test_edit_rejects_grounding_px_out_of_range(settings: Settings) -> None:
         GenerationRequest.parse_edit(
             {"prompt": "x", "image": b64(png_bytes()), "grounding_px": 9000}, settings
         )
+
+
+def test_edit_accepts_a_url_instead_of_base64(settings: Settings, monkeypatch) -> None:
+    """A service should not have to inflate every photo by a third."""
+    src = png_bytes((4, 5, 6))
+    asked: list = []
+
+    def fake_fetch(url, name, **kwargs):
+        asked.append((url, name))
+        return src
+
+    monkeypatch.setattr("krea_worker.request.fetch_image", fake_fetch)
+    req = GenerationRequest.parse_edit(
+        {"prompt": "change her coat", "image": "https://cdn.example/a.png"}, settings
+    )
+    assert req.images == (src,)
+    assert asked == [("https://cdn.example/a.png", "image")]
+
+
+def test_edit_still_accepts_base64_after_urls_were_added(settings: Settings) -> None:
+    src = png_bytes((7, 8, 9))
+    req = GenerationRequest.parse_edit(
+        {"prompt": "change her coat", "image": b64(src)}, settings
+    )
+    assert req.images == (src,)
+
+
+def test_a_mask_may_also_come_as_a_url(settings: Settings, monkeypatch) -> None:
+    mask = png_bytes((1, 1, 1))
+    monkeypatch.setattr("krea_worker.request.fetch_image", lambda url, name, **kw: mask)
+    req = GenerationRequest.parse_edit(
+        {"prompt": "change her pose", "image": b64(png_bytes()),
+         "ref_boost_mask": "https://cdn.example/mask.png"},
+        settings,
+    )
+    assert req.ref_boost_mask == mask

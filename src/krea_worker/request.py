@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from .errors import InputError
+from .image_source import fetch_image, looks_like_url
 from .settings import Settings
 
 ALLOWED_SAMPLERS = {
@@ -249,7 +250,10 @@ class GenerationRequest:
     @staticmethod
     def _decode_image(value: Any, name: str) -> bytes:
         if not isinstance(value, str) or not value.strip():
-            raise InputError(f"{name} must be a base64-encoded image")
+            raise InputError(f"{name} must be a base64-encoded image or a URL")
+        # A URL saves the caller from base64, which costs a third of the payload.
+        if looks_like_url(value):
+            return fetch_image(value.strip(), name, max_bytes=MAX_EDIT_IMAGE_BYTES)
         payload = _DATA_URI.sub("", value.strip())
         try:
             data = base64.b64decode(payload, validate=True)
