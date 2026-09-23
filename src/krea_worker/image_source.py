@@ -93,3 +93,14 @@ def fetch_image(
     if not bytes(data).startswith(_IMAGE_MAGIC):
         raise InputError(f"{name} is not a PNG, JPEG, or WebP image")
     return bytes(data)
+
+def image_size(data: bytes) -> tuple[int, int]:
+    """Pixel size of an encoded image. cv2 is imported lazily, as elsewhere."""
+    import cv2
+    import numpy as np
+
+    frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if frame is None:
+        raise InputError("reference image could not be decoded")
+    height, width = frame.shape[:2]
+    return width, height

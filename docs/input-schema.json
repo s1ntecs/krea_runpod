@@ -46,15 +46,14 @@
           "minimum": 256,
           "maximum": 2048,
           "multipleOf": 16,
-          "default": 1024,
-          "description": "Must be divisible by 16. For edit, keep the aspect ratio of the source or the edit lands on part of the frame."
+          "description": "Divisible by 16. OPTIONAL for edit: left out, the worker takes the size from the source image, scales it under the megapixel cap and rounds down to /16 - so the aspect ratio matches and the edit does not land on part of the frame. For generate it defaults to 1024. width and height must be given together."
         },
         "height": {
           "type": "integer",
           "minimum": 256,
           "maximum": 2048,
           "multipleOf": 16,
-          "default": 1024
+          "description": "Divisible by 16. OPTIONAL for edit: left out, the worker takes the size from the source image, scales it under the megapixel cap and rounds down to /16 - so the aspect ratio matches and the edit does not land on part of the frame. For generate it defaults to 1024. width and height must be given together."
         },
         "num_images": {
           "type": "integer",

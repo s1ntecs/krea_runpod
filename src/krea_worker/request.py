@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from .errors import InputError
-from .image_source import fetch_image, looks_like_url
+from .image_source import fetch_image, image_size, looks_like_url
 from .settings import Settings
 
 ALLOWED_SAMPLERS = {
@@ -65,6 +65,43 @@ _IMAGE_MAGIC = (
     b"RIFF",                                   # WebP container
 )
 
+
+
+# The model works in multiples of 16 and the endpoint caps total pixels, so a
+# source size has to be brought into that shape before it can be used.
+SIZE_STEP = 16
+MIN_SIDE = 256
+MAX_SIDE = 2048
+
+
+def fit_to_model(width: int, height: int, max_megapixels: float) -> tuple[int, int]:
+    """Nearest size the model accepts, keeping the aspect ratio.
+
+    Scales down first if the image is over the megapixel cap, then rounds each
+    side down to a multiple of 16 - rounding down so the result can never creep
+    back over the cap.
+    """
+    if width <= 0 or height <= 0:
+        raise InputError("reference image has no size")
+
+    ratio = width / height
+    megapixels = width * height / 1_000_000
+    if megapixels > max_megapixels:
+        scale = (max_megapixels / megapixels) ** 0.5
+        width, height = width * scale, height * scale
+
+    width = min(max(width, MIN_SIDE), MAX_SIDE)
+    height = min(max(height, MIN_SIDE), MAX_SIDE)
+    # Preserve orientation after clamping: a very wide image can hit MAX_SIDE on
+    # one axis only, which would otherwise distort the frame.
+    if width / height > ratio:
+        width = height * ratio
+    elif width / height < ratio:
+        height = width / ratio
+
+    w = max(MIN_SIDE, int(width // SIZE_STEP) * SIZE_STEP)
+    h = max(MIN_SIDE, int(height // SIZE_STEP) * SIZE_STEP)
+    return w, h
 
 def _as_int(value: Any, name: str) -> int:
     if isinstance(value, bool):
@@ -349,10 +386,24 @@ class GenerationRequest:
             if value < 0 or value > 1000:
                 raise InputError(f"{name} must be between 0 and 1000")
 
+        # Without an explicit size, follow the source. The edit weights were
+        # trained on pairs of equal size, so a mismatched aspect ratio applies
+        # the edit to only part of the frame - and 1024x1024, the generate
+        # default, is the wrong shape for most photographs.
+        has_width, has_height = "width" in payload, "height" in payload
+        if has_width != has_height:
+            raise InputError("width and height must be given together")
+        size_defaults: dict[str, int] = {}
+        if not has_width:
+            source_w, source_h = image_size(images[0])
+            width, height = fit_to_model(source_w, source_h, settings.max_megapixels)
+            size_defaults = {"width": width, "height": height}
+
         defaults = {
             "steps": defaults_for.get("steps", EDIT_DEFAULT_STEPS),
             "cfg": EDIT_DEFAULT_CFG,
             "scheduler": EDIT_DEFAULT_SCHEDULER,
+            **size_defaults,
         }
         base = cls.parse({**defaults, **payload}, settings)
         return replace(
